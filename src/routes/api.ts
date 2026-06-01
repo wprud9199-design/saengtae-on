@@ -216,8 +216,8 @@ api.post('/records', async (c) => {
     for (let i=0; i<photos.slice(0,10).length; i++) {
       try {
         const photoData = photos[i].data || ''
-        // 사진 데이터가 너무 크면 건너뜀 (D1 행 크기 제한 대비)
-        if (photoData.length > 900000) continue
+        // 사진 데이터가 너무 크면 건너뜀 (D1 행 크기 제한 대비, 약 1MB)
+        if (photoData.length > 1200000) continue
         await c.env.DB.prepare(
           'INSERT INTO monitoring_photos(record_id,photo_data,photo_name,photo_order)VALUES(?,?,?,?)'
         ).bind(recordId, photoData, photos[i].name||`photo_${i+1}`, i).run()

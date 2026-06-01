@@ -296,7 +296,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="card-ttl"><i class="fas fa-camera"></i> 사진 등록 <span style="font-size:11px;color:#aaa;font-weight:400">(최대 10장)</span></div>
           <div class="pgrid" id="pgrid"></div>
           <div class="pcnt"><span id="pcnt">0</span>/10장</div>
-          <input type="file" id="pinput" accept="image/*" multiple style="display:none" onchange="addPhotos(event)"/>
+          <!-- accept에 image/* 만 지정 → 갤럭시/애플 모두 갤러리+카메라 선택 가능 -->
+          <input type="file" id="pinput" accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif" multiple style="display:none" onchange="addPhotos(event)"/>
         </div>
 
         <div class="card">
@@ -567,22 +568,37 @@ function addPhotos(e){
   toast('📷 사진 처리 중...')
   let done=0
   add.forEach(f=>{
+    // HEIC/HEIF(아이폰 기본 포맷) 포함 모든 이미지 처리
     const reader=new FileReader()
+    reader.onerror=()=>{ done++; if(done===add.length) renderPhotoGrid() }
     reader.onload=ev=>{
       const img=new Image()
+      img.onerror=()=>{
+        // 이미지 로드 실패 시 (HEIC 등) 원본 base64로 저장 시도
+        G.photos.push({data:ev.target.result, name:f.name})
+        done++
+        if(done===add.length){ renderPhotoGrid(); toast('✅ 사진 '+add.length+'장 등록 완료') }
+      }
       img.onload=()=>{
-        // Canvas로 리사이즈 + 압축 (최대 800px, 품질 0.7)
-        const MAX=800, canvas=document.createElement('canvas')
+        // Canvas로 리사이즈 + 압축
+        // 최대 1600px / 품질 0.85 → 고화질 유지하면서 D1 저장 가능한 크기
+        const MAX=1600, QUALITY=0.85
+        const canvas=document.createElement('canvas')
         let w=img.width, h=img.height
+        // EXIF 회전 보정을 위해 가로/세로 판단
         if(w>h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX} }
         else{ if(h>MAX){w=Math.round(w*MAX/h);h=MAX} }
         canvas.width=w; canvas.height=h
         const ctx=canvas.getContext('2d')
         ctx.drawImage(img,0,0,w,h)
-        const compressed=canvas.toDataURL('image/jpeg',0.7)
-        G.photos.push({data:compressed,name:f.name})
+        const compressed=canvas.toDataURL('image/jpeg', QUALITY)
+        // 압축 후에도 너무 크면 품질 낮춰서 재압축 (D1 행 제한 대비)
+        const final = compressed.length > 800000
+          ? canvas.toDataURL('image/jpeg', 0.65)
+          : compressed
+        G.photos.push({data:final, name:f.name})
         done++
-        if(done===add.length) renderPhotoGrid()
+        if(done===add.length){ renderPhotoGrid(); toast('✅ 사진 '+add.length+'장 등록 완료') }
       }
       img.src=ev.target.result
     }
