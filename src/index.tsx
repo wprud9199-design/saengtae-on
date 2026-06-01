@@ -539,8 +539,31 @@ function renderPhotoGrid(){
 function addPhotos(e){
   const files=Array.from(e.target.files), rem=10-G.photos.length, add=files.slice(0,rem)
   if(files.length>rem) toast('사진은 최대 10장까지 등록 가능합니다.')
+  if(add.length===0) return
+  toast('📷 사진 처리 중...')
   let done=0
-  add.forEach(f=>{const r=new FileReader();r.onload=ev=>{G.photos.push({data:ev.target.result,name:f.name});done++;if(done===add.length)renderPhotoGrid()};r.readAsDataURL(f)})
+  add.forEach(f=>{
+    const reader=new FileReader()
+    reader.onload=ev=>{
+      const img=new Image()
+      img.onload=()=>{
+        // Canvas로 리사이즈 + 압축 (최대 800px, 품질 0.7)
+        const MAX=800, canvas=document.createElement('canvas')
+        let w=img.width, h=img.height
+        if(w>h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX} }
+        else{ if(h>MAX){w=Math.round(w*MAX/h);h=MAX} }
+        canvas.width=w; canvas.height=h
+        const ctx=canvas.getContext('2d')
+        ctx.drawImage(img,0,0,w,h)
+        const compressed=canvas.toDataURL('image/jpeg',0.7)
+        G.photos.push({data:compressed,name:f.name})
+        done++
+        if(done===add.length) renderPhotoGrid()
+      }
+      img.src=ev.target.result
+    }
+    reader.readAsDataURL(f)
+  })
   e.target.value=''
 }
 function delPhoto(i){G.photos.splice(i,1);renderPhotoGrid()}

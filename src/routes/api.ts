@@ -212,10 +212,19 @@ api.post('/records', async (c) => {
       condition_status, latitude||null, longitude||null, special_notes||null).run()
 
     const recordId = result.meta.last_row_id
+    // 사진 저장 - 에러가 나도 기록은 유지, 사진만 건너뜀
     for (let i=0; i<photos.slice(0,10).length; i++) {
-      await c.env.DB.prepare(
-        'INSERT INTO monitoring_photos(record_id,photo_data,photo_name,photo_order)VALUES(?,?,?,?)'
-      ).bind(recordId, photos[i].data, photos[i].name||`photo_${i+1}`, i).run()
+      try {
+        const photoData = photos[i].data || ''
+        // 사진 데이터가 너무 크면 건너뜀 (D1 행 크기 제한 대비)
+        if (photoData.length > 900000) continue
+        await c.env.DB.prepare(
+          'INSERT INTO monitoring_photos(record_id,photo_data,photo_name,photo_order)VALUES(?,?,?,?)'
+        ).bind(recordId, photoData, photos[i].name||`photo_${i+1}`, i).run()
+      } catch(photoErr) {
+        // 사진 저장 실패해도 기록 자체는 성공으로 처리
+        console.error(`사진 ${i+1} 저장 실패:`, photoErr)
+      }
     }
     if (reinspection) {
       await c.env.DB.prepare(`INSERT OR REPLACE INTO reinspection_records
