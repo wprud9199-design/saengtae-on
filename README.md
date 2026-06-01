@@ -1,21 +1,94 @@
-```txt
-npm install
-npm run dev
+# 🌿 생태ON | 제주 생태 모니터링
+
+## 프로젝트 개요
+
+- **앱명**: 생태ON (Ecology ON)
+- **부제**: 제주 생태 모니터링
+- **목적**: 주민 참여 기반 제주형 생태계서비스지불제 생태 모니터링 앱
+- **운영기관**: 제주녹색환경지원센터(제주생태계서비스지원센터)
+
+## 🔗 URL
+
+- **메인 앱**: `http://localhost:3000/`
+- **관리자 페이지**: `http://localhost:3000/admin`
+- **API**: `http://localhost:3000/api/records`
+
+## ✅ 구현된 기능
+
+### 📱 사용자 앱
+- **헤더**: 생태ON 로고(🌿), 제주 생태 모니터링, 제주형 생태계서비스지불제 배지
+- **기록하기 탭**:
+  - 기본 정보 카드: 이름, 장소, 종명 입력
+  - 상태 선택: 양호/보통/불량/고사 (버튼 형태)
+  - 특이사항 입력
+  - 위치 정보: Google Maps 연동 위치 선택 (좌표 자동 지정)
+  - 사진 등록: 종마다 최대 10장 업로드 (미리보기, 삭제 지원)
+  - 재점검 사항 카드: 제거완료/재발생없음/확산확인 체크박스, 재점검 일자/메모
+  - 생태 체크리스트: 6개 항목 (식생훼손/외래종/환경관리/탐방로/사진기록/안내시설)
+- **목록 탭**: 등록된 기록 카드 목록, 새로고침, 상세 보기
+- **상세 보기**: 사진, 재점검 사항, 체크리스트 포함
+- **푸터**: © 제주녹색환경지원센터(제주생태계서비스지원센터)
+
+### 🔑 관리자 페이지 (`/admin`)
+- **로그인**: admin / admin1234
+- **통계 대시보드**: 전체/양호/보통/불량/고사 건수
+- **기록 목록 테이블**: 전체 데이터 조회
+- **검색/필터**: 키워드 검색, 상태별 필터
+- **수정 기능**: 전체 필드 수정 + 재점검 + 체크리스트 수정, 수정일시/수정자 자동 기록
+- **삭제 기능**: 기록 삭제 (확인 다이얼로그)
+- **CSV 내보내기**: 전체 데이터 Excel 호환 CSV 다운로드
+
+## 📊 데이터 모델
+
+### 주요 테이블
+| 테이블 | 설명 |
+|--------|------|
+| `monitoring_records` | 모니터링 기록 메인 |
+| `monitoring_photos` | 사진 데이터 (Base64, 최대 10장/기록) |
+| `reinspection_records` | 재점검 사항 |
+| `ecology_checklist` | 생태 체크리스트 |
+| `admins` | 관리자 계정 |
+
+### 상태 항목
+- 양호 🟢 / 보통 🟡 / 불량 🔴 / 고사 ⬛
+
+### 생태 체크리스트 항목
+1. 식생 훼손 여부 (양호/보통/미흡)
+2. 외래종 발생 (있음/없음)
+3. 환경 관리 (있음/없음)
+4. 탐방로 상태 (양호/정비 필요)
+5. 사진 기록 (완료/미완료)
+6. 안내시설 (양호/보통/미흡)
+
+## 🚀 배포 및 실행
+
+### 로컬 개발
+```bash
+cd /home/user/webapp
+npm run build
+npm run db:migrate:local
+pm2 start ecosystem.config.cjs
 ```
 
-```txt
-npm run deploy
-```
+### 기술 스택
+- **프레임워크**: Hono (TypeScript)
+- **플랫폼**: Cloudflare Pages / Workers
+- **데이터베이스**: Cloudflare D1 (SQLite)
+- **빌드**: Vite
+- **스타일**: Tailwind CSS (CDN)
+- **아이콘**: Font Awesome
+- **지도**: Google Maps Embed API
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## 📱 모바일 최적화
+- 최대 너비 480px 모바일 앱 레이아웃
+- 터치 친화적 버튼 및 입력 폼
+- 스크롤 가능한 사진 그리드
+- 부드러운 탭 전환 애니메이션
 
-```txt
-npm run cf-typegen
-```
+## 관리자 기본 계정
+- **아이디**: admin
+- **비밀번호**: admin1234
+- ⚠️ 운영 시 반드시 비밀번호 변경 필요
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+## 업데이트 기록
+- 2026-06-01: 최초 구현 완료
