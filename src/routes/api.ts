@@ -62,6 +62,8 @@ async function initDB(db: D1Database) {
     db.prepare(`CREATE TABLE IF NOT EXISTS reinspection_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       record_id INTEGER NOT NULL UNIQUE,
+      registration_type TEXT DEFAULT '신규등록',
+      results TEXT DEFAULT '',
       removal_done INTEGER DEFAULT 0,
       no_recurrence INTEGER DEFAULT 0,
       spread_check INTEGER DEFAULT 0,
@@ -233,12 +235,13 @@ api.post('/records', async (c) => {
       }
     }
     if (reinspection) {
+      const regType = reinspection.registration_type || '신규등록'
+      const resultsArr = Array.isArray(reinspection.results) ? reinspection.results : []
+      const resultsStr = resultsArr.join(',')
       await c.env.DB.prepare(`INSERT OR REPLACE INTO reinspection_records
-        (record_id,removal_done,no_recurrence,spread_check,reinspection_memo,reinspection_date)
-        VALUES(?,?,?,?,?,?)`)
-        .bind(recordId, reinspection.removal_done?1:0, reinspection.no_recurrence?1:0,
-          reinspection.spread_check?1:0, reinspection.reinspection_memo||null,
-          reinspection.reinspection_date||null).run()
+        (record_id,registration_type,results,reinspection_memo)
+        VALUES(?,?,?,?)`)
+        .bind(recordId, regType, resultsStr, reinspection.reinspection_memo||null).run()
     }
     if (checklist) {
       await c.env.DB.prepare(`INSERT OR REPLACE INTO ecology_checklist
@@ -277,12 +280,13 @@ api.put('/records/:id', async (c) => {
         updated_by||null,id).run()
 
     if (reinspection) {
+      const regType = reinspection.registration_type || '신규등록'
+      const resultsArr = Array.isArray(reinspection.results) ? reinspection.results : []
+      const resultsStr = resultsArr.join(',')
       await c.env.DB.prepare(`INSERT OR REPLACE INTO reinspection_records
-        (record_id,removal_done,no_recurrence,spread_check,reinspection_memo,reinspection_date,updated_at)
-        VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)`)
-        .bind(id, reinspection.removal_done?1:0, reinspection.no_recurrence?1:0,
-          reinspection.spread_check?1:0, reinspection.reinspection_memo||null,
-          reinspection.reinspection_date||null).run()
+        (record_id,registration_type,results,reinspection_memo,updated_at)
+        VALUES(?,?,?,?,CURRENT_TIMESTAMP)`)
+        .bind(id, regType, resultsStr, reinspection.reinspection_memo||null).run()
     }
     if (checklist) {
       await c.env.DB.prepare(`INSERT OR REPLACE INTO ecology_checklist
@@ -484,8 +488,7 @@ api.get('/admin/export', async (c) => {
       SELECT r.id, r.reporter_name, u.full_name as member_name, u.organization,
         r.location_name, r.region, r.species_name, r.condition_status,
         r.latitude, r.longitude, r.special_notes,
-        ri.removal_done, ri.no_recurrence, ri.spread_check,
-        ri.reinspection_date, ri.reinspection_memo,
+        ri.registration_type, ri.results, ri.reinspection_memo,
         ec.vegetation_damage, ec.invasive_species, ec.environment_mgmt,
         ec.trail_condition, ec.photo_record, ec.guide_facility,
         r.created_at, r.updated_at, r.updated_by,

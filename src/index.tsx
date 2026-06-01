@@ -348,11 +348,43 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 
         <div class="card">
           <div class="card-ttl"><i class="fas fa-redo"></i> 재점검 사항</div>
-          <div class="ci" onclick="tgl('c-rm')"><div class="cbox" id="c-rm"></div><span style="font-size:12px;color:#444">☑ 제거 완료</span></div>
-          <div class="ci" onclick="tgl('c-nr')"><div class="cbox" id="c-nr"></div><span style="font-size:12px;color:#444">☑ 재발생 없음</span></div>
-          <div class="ci" onclick="tgl('c-sc')"><div class="cbox" id="c-sc"></div><span style="font-size:12px;color:#444">☑ 확산 확인</span></div>
-          <div class="fg" style="margin-top:10px"><label class="fl">재점검 일자</label><input type="date" class="fi" id="riDate"/></div>
-          <div class="fg"><label class="fl">재점검 메모</label><textarea class="ft" id="riMemo" style="min-height:55px" placeholder="재점검 내용..."></textarea></div>
+
+          <!-- 등록 유형 선택 -->
+          <div class="fg">
+            <label class="fl">등록 유형 <span class="req">*</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button type="button" id="regBtn-new" class="reg-btn reg-active" onclick="setRegType('신규등록')">
+                <i class="fas fa-plus-circle"></i> 신규등록
+              </button>
+              <button type="button" id="regBtn-re" class="reg-btn" onclick="setRegType('재점검')">
+                <i class="fas fa-search"></i> 재점검
+              </button>
+            </div>
+            <input type="hidden" id="rRegType" value="신규등록"/>
+          </div>
+
+          <!-- 재점검 결과 (재점검 선택 시만 표시) -->
+          <div id="riSection" style="display:none;margin-top:4px">
+            <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:7px">
+              재점검 결과 <span class="req">*</span>
+              <span style="font-size:10px;font-weight:400;color:#aaa">(1개 이상 선택 필수)</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px">
+              <div class="ci" onclick="tgl('ri-1')"><div class="cbox" id="ri-1"></div><span style="font-size:11px;color:#444">제거(교란종 등) 완료</span></div>
+              <div class="ci" onclick="tgl('ri-2')"><div class="cbox" id="ri-2"></div><span style="font-size:11px;color:#444">재발생 없음</span></div>
+              <div class="ci" onclick="tgl('ri-3')"><div class="cbox" id="ri-3"></div><span style="font-size:11px;color:#444">재발생 확인</span></div>
+              <div class="ci" onclick="tgl('ri-4')"><div class="cbox" id="ri-4"></div><span style="font-size:11px;color:#444">확산 확인</span></div>
+              <div class="ci" onclick="tgl('ri-5')"><div class="cbox" id="ri-5"></div><span style="font-size:11px;color:#444">개체 수 감소</span></div>
+              <div class="ci" onclick="tgl('ri-6')"><div class="cbox" id="ri-6"></div><span style="font-size:11px;color:#444">개체 수 증가</span></div>
+              <div class="ci" onclick="tgl('ri-7')"><div class="cbox" id="ri-7"></div><span style="font-size:11px;color:#444">추가 조치 필요</span></div>
+              <div class="ci" onclick="tgl('ri-8')"><div class="cbox" id="ri-8"></div><span style="font-size:11px;color:#444">지속 관찰 필요</span></div>
+              <div class="ci" onclick="tgl('ri-9')"><div class="cbox" id="ri-9"></div><span style="font-size:11px;color:#444">이전 조사와 동일</span></div>
+            </div>
+            <div class="fg" style="margin-top:10px">
+              <label class="fl">재점검 메모 <span class="req">*</span></label>
+              <textarea class="ft" id="riMemo" style="min-height:55px" placeholder="재점검 내용을 입력해주세요..."></textarea>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -445,7 +477,9 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 <script>
 // ══ 전역 상태 ══
 let G = { user:null, photos:[], lat:null, lng:null, pLat:null, pLng:null,
-          checks:{rm:false,nr:false,sc:false} }
+          checks:{rm:false,nr:false,sc:false},
+          regType:'신규등록',
+          riChecks: Array(9).fill(false) }
 
 // ══ 아이디/비밀번호 저장 체크박스 ══
 function tglSave(){
@@ -582,13 +616,31 @@ function selSt(s){
   document.getElementById('rStatus').value=s
 }
 
+// ══ 등록유형 토글 ══
+const RI_KEYS = ['ri-1','ri-2','ri-3','ri-4','ri-5','ri-6','ri-7','ri-8','ri-9']
+const RI_LABELS = ['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일']
+
+function setRegType(type){
+  G.regType = type
+  document.getElementById('rRegType').value = type
+  const isRe = type === '재점검'
+  document.getElementById('riSection').style.display = isRe ? 'block' : 'none'
+  document.getElementById('regBtn-new').className = 'reg-btn' + (isRe ? '' : ' reg-active')
+  document.getElementById('regBtn-re').className  = 'reg-btn' + (isRe ? ' reg-active' : '')
+}
+
 // ══ 체크 ══
-const ckMap={rm:'c-rm',nr:'c-nr',sc:'c-sc'}
 function tgl(id){
-  const key=Object.keys(ckMap).find(k=>ckMap[k]===id)
-  G.checks[key]=!G.checks[key]
   const el=document.getElementById(id)
-  G.checks[key]?el.classList.add('ck'):el.classList.remove('ck')
+  if(!el)return
+  const isOn = el.classList.toggle('ck')
+  // ri-* 키는 G.riChecks 배열, 기존 cbox는 G.checks
+  if(id.startsWith('ri-')){
+    const idx = parseInt(id.split('-')[1]) - 1
+    G.riChecks[idx] = isOn
+  } else {
+    // 혹시 남아있는 다른 cbox 처리
+  }
 }
 
 // ══ 사진 ══
@@ -894,7 +946,29 @@ async function submitForm(e){
   }
 
   const btn=document.getElementById('subBtn'); btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 저장 중...'
+
+  // ── 등록유형 및 재점검 필수 검사 ──
+  const regType = document.getElementById('rRegType').value || '신규등록'
+  if(regType === '재점검'){
+    const anyChecked = G.riChecks.some(v=>v)
+    if(!anyChecked){
+      toast('📋 재점검 결과를 1개 이상 선택해주세요.')
+      document.getElementById('riSection').scrollIntoView({behavior:'smooth',block:'center'})
+      btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> 기록 제출'
+      return
+    }
+    const riMemo = document.getElementById('riMemo').value.trim()
+    if(!riMemo){
+      toast('📝 재점검 메모를 입력해주세요.')
+      document.getElementById('riMemo').focus()
+      document.getElementById('riMemo').scrollIntoView({behavior:'smooth',block:'center'})
+      btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> 기록 제출'
+      return
+    }
+  }
+
   try{
+    const riResults = RI_LABELS.filter((_,i)=>G.riChecks[i])
     const payload={
       user_id: G.user?.id||null,
       reporter_name:document.getElementById('rName').value,
@@ -909,9 +983,11 @@ async function submitForm(e){
       weather: weather,
       eco_type: ecoType,
       photos:G.photos,
-      reinspection:{removal_done:G.checks.rm,no_recurrence:G.checks.nr,spread_check:G.checks.sc,
-        reinspection_memo:document.getElementById('riMemo').value,
-        reinspection_date:document.getElementById('riDate').value},
+      reinspection:{
+        registration_type: regType,
+        results: riResults,
+        reinspection_memo: regType==='재점검' ? document.getElementById('riMemo').value : ''
+      },
       checklist:{vegetation_damage:document.getElementById('cl-v').value,
         invasive_species:document.getElementById('cl-i').value,
         environment_mgmt:document.getElementById('cl-e').value,
@@ -929,6 +1005,7 @@ async function submitForm(e){
 function resetForm(){
   document.getElementById('mForm').reset()
   G.photos=[]; G.lat=null; G.lng=null; G.checks={rm:false,nr:false,sc:false}
+  G.regType='신규등록'; G.riChecks=Array(9).fill(false)
   renderPhotoGrid(); selSt('양호')
   document.getElementById('locDisp').classList.remove('vis')
   document.querySelectorAll('.cbox').forEach(b=>b.classList.remove('ck'))
@@ -937,6 +1014,8 @@ function resetForm(){
   document.getElementById('rSurveyTime').value=''
   document.getElementById('rWeather').value=''
   document.getElementById('rEcoType').value=''
+  // 등록유형 초기화
+  setRegType('신규등록')
 }
 
 // ══ 목록 ══
@@ -982,7 +1061,17 @@ async function viewDetail(id){
     let photos=''
     if(rec.photos?.length){photos=\`<div style="display:flex;gap:5px;overflow-x:auto;padding:6px 0">\${rec.photos.map(p=>\`<img src="\${p.photo_data}" style="width:65px;height:65px;border-radius:7px;object-fit:cover;flex-shrink:0"/>\`).join('')}</div>\`}
     let ri=''
-    if(rec.reinspection){const ri2=rec.reinspection;ri=\`<div style="border-top:1px solid #f0f0f0;padding-top:10px;margin-top:8px"><div style="font-size:12px;font-weight:700;color:#1a7a3c;margin-bottom:6px">📋 재점검 사항</div><div style="font-size:11px;color:#555;line-height:2">\${ri2.removal_done?'✅':'⬜'} 제거완료 &nbsp;\${ri2.no_recurrence?'✅':'⬜'} 재발생없음 &nbsp;\${ri2.spread_check?'✅':'⬜'} 확산확인\${ri2.reinspection_date?'<br>재점검: '+ri2.reinspection_date:''}\${ri2.reinspection_memo?'<br>메모: '+ri2.reinspection_memo:''}</div></div>\`}
+    if(rec.reinspection){
+      const ri2=rec.reinspection
+      const rType = ri2.registration_type||'신규등록'
+      const badge = rType==='재점검'
+        ? '<span style="background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">재점검</span>'
+        : '<span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">신규등록</span>'
+      const resArr = Array.isArray(ri2.results) ? ri2.results : (ri2.results ? String(ri2.results).split(',').filter(Boolean) : [])
+      const resHtml = resArr.length ? '<br>결과: '+resArr.map(r=>\`<span style="background:#f1f8e9;border-radius:4px;padding:1px 5px;font-size:10px">\${r}</span>\`).join(' ') : ''
+      const memoHtml = ri2.reinspection_memo ? \`<br>메모: \${ri2.reinspection_memo}\` : ''
+      ri=\`<div style="border-top:1px solid #f0f0f0;padding-top:10px;margin-top:8px"><div style="font-size:12px;font-weight:700;color:#1a7a3c;margin-bottom:6px">📋 재점검 사항 \${badge}</div><div style="font-size:11px;color:#555;line-height:1.9">\${resHtml}\${memoHtml}</div></div>\`
+    }
     let cl=''
     if(rec.checklist){const c=rec.checklist;cl=\`<div style="border-top:1px solid #f0f0f0;padding-top:10px;margin-top:8px"><div style="font-size:12px;font-weight:700;color:#1a7a3c;margin-bottom:6px">✅ 생태 체크리스트</div>\${[['식생 훼손',c.vegetation_damage],['외래종 발생',c.invasive_species],['환경 관리',c.environment_mgmt],['탐방로 상태',c.trail_condition],['사진 기록',c.photo_record],['안내시설',c.guide_facility]].map(([k,v])=>\`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f5f5f5"><span style="color:#888">\${k}</span><span style="font-weight:600">\${v}</span></div>\`).join('')}</div>\`}
     document.getElementById('detailCnt').innerHTML=\`
@@ -1171,6 +1260,10 @@ tr:hover td{background:#fafffe}
 
 .check-row{display:flex;align-items:center;gap:8px;padding:5px 0}
 .check-row input{width:15px;height:15px;accent-color:#2d9e52}
+
+/* ── 등록유형 버튼 (메인앱) ── */
+.reg-btn{padding:9px 0;border-radius:10px;font-size:13px;font-weight:700;border:2px solid #e0e0e0;background:#fafafa;color:#888;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.reg-btn.reg-active{background:#e8f5e9;border-color:#2d9e52;color:#1a7a3c}
 </style>
 </head>
 <body>
@@ -1432,14 +1525,24 @@ tr:hover td{background:#fafffe}
     </div>
     <div class="fg"><label class="fl">특이사항</label><textarea class="ft" id="e-notes"></textarea></div>
     <div style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:6px">
-      <div class="fl" style="font-weight:700;color:#1a7a3c;margin-bottom:8px">📋 재점검 사항</div>
-      <div class="check-row"><input type="checkbox" id="e-rm"/><label for="e-rm" style="font-size:12px">제거 완료</label></div>
-      <div class="check-row"><input type="checkbox" id="e-nr"/><label for="e-nr" style="font-size:12px">재발생 없음</label></div>
-      <div class="check-row"><input type="checkbox" id="e-sc"/><label for="e-sc" style="font-size:12px">확산 확인</label></div>
-      <div class="fgrid" style="margin-top:8px">
-        <div class="fg"><label class="fl">재점검 일자</label><input type="date" class="fi" id="e-ridate"/></div>
-        <div class="fg"><label class="fl">재점검 메모</label><textarea class="ft" id="e-rimemo" style="min-height:50px"></textarea></div>
+      <div class="fl" style="font-weight:700;color:#1a7a3c;margin-bottom:10px">📋 재점검 사항</div>
+      <!-- 등록유형 -->
+      <div class="fg">
+        <label class="fl">등록 유형</label>
+        <select class="fs" id="e-regtype">
+          <option value="신규등록">신규등록</option>
+          <option value="재점검">재점검</option>
+        </select>
       </div>
+      <!-- 재점검 결과 체크박스 -->
+      <div class="fg">
+        <label class="fl">재점검 결과 <span style="font-size:10px;color:#aaa">(해당 항목 모두 선택)</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">
+          ${['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일'].map((lbl,i)=>`
+          <div class="check-row"><input type="checkbox" id="e-ri-${i+1}" value="${lbl}"/><label for="e-ri-${i+1}" style="font-size:11px">${lbl}</label></div>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">재점검 메모</label><textarea class="ft" id="e-rimemo" style="min-height:50px"></textarea></div>
     </div>
     <div style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:6px">
       <div class="fl" style="font-weight:700;color:#1a7a3c;margin-bottom:8px">✅ 생태 체크리스트</div>
@@ -1870,11 +1973,17 @@ async function openEdit(id){
     document.getElementById('e-notes').value=rec.special_notes||''
     document.getElementById('e-by').value=''
     if(rec.reinspection){
-      document.getElementById('e-rm').checked=!!rec.reinspection.removal_done
-      document.getElementById('e-nr').checked=!!rec.reinspection.no_recurrence
-      document.getElementById('e-sc').checked=!!rec.reinspection.spread_check
-      document.getElementById('e-ridate').value=rec.reinspection.reinspection_date||''
-      document.getElementById('e-rimemo').value=rec.reinspection.reinspection_memo||''
+      const ri=rec.reinspection
+      document.getElementById('e-regtype').value = ri.registration_type||'신규등록'
+      // 결과 체크박스 복원
+      const labels=['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일']
+      const savedResults = Array.isArray(ri.results) ? ri.results
+        : (typeof ri.results==='string' ? ri.results.split(',').filter(Boolean) : [])
+      for(let i=1;i<=9;i++){
+        const cb=document.getElementById(\`e-ri-\${i}\`)
+        if(cb) cb.checked=savedResults.includes(labels[i-1])
+      }
+      document.getElementById('e-rimemo').value=ri.reinspection_memo||''
     }
     if(rec.checklist){
       document.getElementById('e-cl-v').value=rec.checklist.vegetation_damage||'양호'
@@ -1890,6 +1999,8 @@ async function openEdit(id){
 function closeEdit(){document.getElementById('editModal').classList.remove('vis');editId=null}
 async function saveEdit(){
   if(!editId)return
+  const eLabels=['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일']
+  const eChecked=eLabels.filter((_,i)=>{const cb=document.getElementById(\`e-ri-\${i+1}\`);return cb&&cb.checked})
   const payload={
     reporter_name:document.getElementById('e-nm').value,
     location_name:document.getElementById('e-loc').value,
@@ -1900,7 +2011,11 @@ async function saveEdit(){
     longitude:parseFloat(document.getElementById('e-lng').value)||null,
     special_notes:document.getElementById('e-notes').value,
     updated_by:document.getElementById('e-by').value||aUser?.full_name||'관리자',
-    reinspection:{removal_done:document.getElementById('e-rm').checked,no_recurrence:document.getElementById('e-nr').checked,spread_check:document.getElementById('e-sc').checked,reinspection_date:document.getElementById('e-ridate').value,reinspection_memo:document.getElementById('e-rimemo').value},
+    reinspection:{
+      registration_type:document.getElementById('e-regtype').value,
+      results:eChecked,
+      reinspection_memo:document.getElementById('e-rimemo').value
+    },
     checklist:{vegetation_damage:document.getElementById('e-cl-v').value,invasive_species:document.getElementById('e-cl-i').value,environment_mgmt:document.getElementById('e-cl-e').value,trail_condition:document.getElementById('e-cl-t').value,photo_record:document.getElementById('e-cl-p').value,guide_facility:document.getElementById('e-cl-g').value}
   }
   const r=await fetch(\`/api/records/\${editId}\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
@@ -1991,8 +2106,8 @@ async function getExportData(){
 async function exportCSV(){
   const data=await getExportData()
   if(!data.length){toast('내보낼 데이터가 없습니다.');return}
-  const hdrs=['ID','종명','장소','지역','작성자','회원명','소속','상태','위도','경도','특이사항','제거완료','재발생없음','확산확인','재점검일자','재점검메모','식생훼손','외래종','환경관리','탐방로','사진기록','안내시설','등록일시','수정일시','수정자','사진수']
-  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.member_name||'',r.organization||'',r.condition_status,r.latitude||'',r.longitude||'',(r.special_notes||'').replace(/,/g,'；'),r.removal_done?'완료':'',r.no_recurrence?'없음':'',r.spread_check?'확인':'',r.reinspection_date||'',r.reinspection_memo||'',r.vegetation_damage||'',r.invasive_species||'',r.environment_mgmt||'',r.trail_condition||'',r.photo_record||'',r.guide_facility||'',r.created_at,r.updated_at||'',r.updated_by||'',r.photo_count||0])
+  const hdrs=['ID','종명','장소','지역','작성자','회원명','소속','상태','위도','경도','특이사항','등록유형','재점검결과','재점검메모','식생훼손','외래종','환경관리','탐방로','사진기록','안내시설','등록일시','수정일시','수정자','사진수']
+  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.member_name||'',r.organization||'',r.condition_status,r.latitude||'',r.longitude||'',(r.special_notes||'').replace(/,/g,'；'),r.registration_type||'신규등록',(r.results||'').replace(/,/g,'|'),r.reinspection_memo||'',r.vegetation_damage||'',r.invasive_species||'',r.environment_mgmt||'',r.trail_condition||'',r.photo_record||'',r.guide_facility||'',r.created_at,r.updated_at||'',r.updated_by||'',r.photo_count||0])
   const csv='\\uFEFF'+[hdrs,...rows].map(r=>r.join(',')).join('\\n')
   dl(csv,'text/csv;charset=utf-8','생태ON_기록_'+now()+'.csv')
   toast('✅ CSV 다운로드 완료 ('+data.length+'건)')
