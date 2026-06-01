@@ -45,6 +45,10 @@ async function initDB(db: D1Database) {
       survey_time TEXT,
       weather TEXT,
       eco_type TEXT,
+      review_status TEXT DEFAULT '검토중',
+      review_memo TEXT,
+      reviewed_by TEXT,
+      reviewed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME,
       updated_by TEXT,
@@ -85,6 +89,17 @@ async function initDB(db: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME,
       FOREIGN KEY (record_id) REFERENCES monitoring_records(id) ON DELETE CASCADE
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS monitoring_points (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      region TEXT,
+      latitude REAL,
+      longitude REAL,
+      eco_type TEXT,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME
     )`),
     db.prepare(`INSERT OR IGNORE INTO users
       (username,password_hash,full_name,email,role,is_admin,approved_at)
@@ -220,17 +235,14 @@ api.post('/records', async (c) => {
       survey_date||null, survey_time||null, weather||null, eco_type||null).run()
 
     const recordId = result.meta.last_row_id
-    // 사진 저장 - 에러가 나도 기록은 유지, 사진만 건너뜀
     for (let i=0; i<photos.slice(0,10).length; i++) {
       try {
         const photoData = photos[i].data || ''
-        // 사진 데이터가 너무 크면 건너뜀 (D1 행 크기 제한 대비, 약 1MB)
         if (photoData.length > 1200000) continue
         await c.env.DB.prepare(
           'INSERT INTO monitoring_photos(record_id,photo_data,photo_name,photo_order)VALUES(?,?,?,?)'
         ).bind(recordId, photoData, photos[i].name||`photo_${i+1}`, i).run()
       } catch(photoErr) {
-        // 사진 저장 실패해도 기록 자체는 성공으로 처리
         console.error(`사진 ${i+1} 저장 실패:`, photoErr)
       }
     }
@@ -388,7 +400,81 @@ api.put('/admin/users/:id/role', async (c) => {
   } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
 })
 
+// ─────────────────────────────────────────
+// ADMIN - 검수 상태 변경
+// ─────────────────────────────────────────
+api.put('/admin/records/:id/review', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    const id = c.req.param('id')
+    const { review_status, review_memo, reviewed_by } = await c.req.json()
+    if (!['검토중','승인','반려','수정요청'].includes(review_status))
+      return c.json({ success: false, error: '유효하지 않은 검수 상태입니다.' }, 400)
+
+    await c.env.DB.prepare(`UPDATE monitoring_records SET
+      review_status=?, review_memo=?, reviewed_by=?, reviewed_at=CURRENT_TIMESTAMP,
+      updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      .bind(review_status, review_memo||null, reviewed_by||'관리자', id).run()
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+// ─────────────────────────────────────────
+// ADMIN - 고정 모니터링 지점 CRUD
+// ─────────────────────────────────────────
+api.get('/admin/points', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    const { region } = c.req.query()
+    let where = 'WHERE 1=1'
+    const params: any[] = []
+    if (region) { where += ' AND region=?'; params.push(region) }
+    const { results } = await c.env.DB.prepare(
+      `SELECT * FROM monitoring_points ${where} ORDER BY created_at DESC`
+    ).bind(...params).all()
+    return c.json({ success: true, data: results })
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+api.post('/admin/points', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    const { name, region, latitude, longitude, eco_type, description } = await c.req.json()
+    if (!name) return c.json({ success: false, error: '지점명은 필수입니다.' }, 400)
+    const result = await c.env.DB.prepare(`INSERT INTO monitoring_points
+      (name, region, latitude, longitude, eco_type, description)
+      VALUES(?,?,?,?,?,?)`)
+      .bind(name, region||null, latitude||null, longitude||null, eco_type||null, description||null)
+      .run()
+    return c.json({ success: true, data: { id: result.meta.last_row_id } }, 201)
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+api.put('/admin/points/:id', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    const id = c.req.param('id')
+    const { name, region, latitude, longitude, eco_type, description } = await c.req.json()
+    await c.env.DB.prepare(`UPDATE monitoring_points SET
+      name=?, region=?, latitude=?, longitude=?, eco_type=?, description=?,
+      updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      .bind(name, region||null, latitude||null, longitude||null, eco_type||null, description||null, id)
+      .run()
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+api.delete('/admin/points/:id', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    await c.env.DB.prepare('DELETE FROM monitoring_points WHERE id=?').bind(c.req.param('id')).run()
+    return c.json({ success: true })
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+// ─────────────────────────────────────────
 // ADMIN - 통계
+// ─────────────────────────────────────────
 api.get('/admin/stats', async (c) => {
   try {
     await initDB(c.env.DB)
@@ -404,7 +490,10 @@ api.get('/admin/stats', async (c) => {
         SUM(CASE WHEN condition_status='양호' THEN 1 ELSE 0 END) as good,
         SUM(CASE WHEN condition_status='보통' THEN 1 ELSE 0 END) as normal,
         SUM(CASE WHEN condition_status='불량' THEN 1 ELSE 0 END) as bad,
-        SUM(CASE WHEN condition_status='고사' THEN 1 ELSE 0 END) as dead
+        SUM(CASE WHEN condition_status='고사' THEN 1 ELSE 0 END) as dead,
+        SUM(CASE WHEN review_status='검토중' OR review_status IS NULL THEN 1 ELSE 0 END) as review_pending,
+        SUM(CASE WHEN review_status='승인' THEN 1 ELSE 0 END) as review_approved,
+        SUM(CASE WHEN review_status='반려' THEN 1 ELSE 0 END) as review_rejected
       FROM monitoring_records ${dateWhere}
     `).bind(...dp).first()
 
@@ -449,10 +538,38 @@ api.get('/admin/stats', async (c) => {
       GROUP BY species_name ORDER BY count DESC LIMIT 10
     `).bind(...dp).all()
 
-    // 월별 기록
+    // 월별 기록 (최근 12개월)
     const { results: byMonth } = await c.env.DB.prepare(`
       SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as count
       FROM monitoring_records GROUP BY month ORDER BY month DESC LIMIT 12
+    `).all()
+
+    // 연도별 기록
+    const { results: byYear } = await c.env.DB.prepare(`
+      SELECT strftime('%Y', created_at) as year, COUNT(*) as count
+      FROM monitoring_records GROUP BY year ORDER BY year DESC LIMIT 5
+    `).all()
+
+    // 등록유형별 통계 (신규등록/재점검)
+    const { results: byRegType } = await c.env.DB.prepare(`
+      SELECT COALESCE(ri.registration_type,'신규등록') as reg_type, COUNT(*) as count
+      FROM monitoring_records r
+      LEFT JOIN reinspection_records ri ON r.id=ri.record_id
+      ${dateWhere} GROUP BY reg_type ORDER BY count DESC
+    `).bind(...dp).all()
+
+    // 검수 현황
+    const { results: byReview } = await c.env.DB.prepare(`
+      SELECT COALESCE(review_status,'검토중') as review_status, COUNT(*) as count
+      FROM monitoring_records ${dateWhere} GROUP BY review_status
+    `).bind(...dp).all()
+
+    // 조사일자별 기록 (survey_date 기준 최근 30건)
+    const { results: bySurveyDate } = await c.env.DB.prepare(`
+      SELECT survey_date, COUNT(*) as count
+      FROM monitoring_records
+      WHERE survey_date IS NOT NULL
+      GROUP BY survey_date ORDER BY survey_date DESC LIMIT 30
     `).all()
 
     // 사진 통계
@@ -462,32 +579,79 @@ api.get('/admin/stats', async (c) => {
 
     // 지도 데이터 (좌표 있는 기록)
     const { results: mapData } = await c.env.DB.prepare(`
-      SELECT id, species_name, location_name, condition_status, latitude, longitude,
-        reporter_name, created_at
-      FROM monitoring_records
-      WHERE latitude IS NOT NULL AND longitude IS NOT NULL ${dateWhere.replace('WHERE 1=1','').replace('WHERE','AND')}
-    `).bind(...dp).all()
+      SELECT r.id, r.species_name, r.location_name, r.condition_status,
+        r.latitude, r.longitude, r.reporter_name, r.created_at, r.region,
+        r.review_status, r.survey_date,
+        COALESCE(ri.registration_type,'신규등록') as registration_type
+      FROM monitoring_records r
+      LEFT JOIN reinspection_records ri ON r.id=ri.record_id
+      WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL
+    `).all()
 
     return c.json({
-      success: true, data: { summary, userStats, byRegion, byUser, byDate, bySpecies, byMonth, photoStats, mapData }
+      success: true, data: {
+        summary, userStats, byRegion, byUser, byDate, bySpecies,
+        byMonth, byYear, byRegType, byReview, bySurveyDate, photoStats, mapData
+      }
     })
   } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
 })
 
-// ADMIN - 전체 데이터 내보내기 (CSV용)
+// ADMIN - 사진 목록 (날짜/지역/유형별)
+api.get('/admin/photos', async (c) => {
+  try {
+    await initDB(c.env.DB)
+    const { region, from, to, reg_type, limit = '50', offset = '0' } = c.req.query()
+    let where = 'WHERE 1=1'
+    const params: any[] = []
+    if (region) { where += ' AND r.region=?'; params.push(region) }
+    if (from) { where += ' AND date(r.created_at)>=?'; params.push(from) }
+    if (to) { where += ' AND date(r.created_at)<=?'; params.push(to) }
+    if (reg_type) { where += ' AND COALESCE(ri.registration_type,\'신규등록\')=?'; params.push(reg_type) }
+
+    const { results } = await c.env.DB.prepare(`
+      SELECT p.id as photo_id, p.photo_name, p.photo_order, p.created_at as photo_date,
+        r.id as record_id, r.species_name, r.location_name, r.region, r.reporter_name,
+        r.survey_date, r.created_at as record_date,
+        COALESCE(ri.registration_type,'신규등록') as registration_type
+      FROM monitoring_photos p
+      JOIN monitoring_records r ON p.record_id=r.id
+      LEFT JOIN reinspection_records ri ON r.id=ri.record_id
+      ${where} ORDER BY r.created_at DESC, p.photo_order ASC
+      LIMIT ? OFFSET ?
+    `).bind(...params, parseInt(limit), parseInt(offset)).all()
+
+    const countRow = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total
+      FROM monitoring_photos p
+      JOIN monitoring_records r ON p.record_id=r.id
+      LEFT JOIN reinspection_records ri ON r.id=ri.record_id
+      ${where}
+    `).bind(...params).first() as any
+
+    return c.json({ success: true, data: results, total: countRow?.total || 0 })
+  } catch (e: any) { return c.json({ success: false, error: e.message }, 500) }
+})
+
+// ADMIN - 전체 데이터 내보내기
 api.get('/admin/export', async (c) => {
   try {
     await initDB(c.env.DB)
-    const { from, to } = c.req.query()
+    const { from, to, region, reg_type, review_status } = c.req.query()
     let where = 'WHERE 1=1'
     const params: any[] = []
     if (from) { where += ' AND date(r.created_at)>=?'; params.push(from) }
     if (to)   { where += ' AND date(r.created_at)<=?'; params.push(to) }
+    if (region) { where += ' AND r.region=?'; params.push(region) }
+    if (review_status) { where += ' AND COALESCE(r.review_status,\'검토중\')=?'; params.push(review_status) }
+    if (reg_type) { where += ' AND COALESCE(ri.registration_type,\'신규등록\')=?'; params.push(reg_type) }
 
     const { results } = await c.env.DB.prepare(`
       SELECT r.id, r.reporter_name, u.full_name as member_name, u.organization,
         r.location_name, r.region, r.species_name, r.condition_status,
         r.latitude, r.longitude, r.special_notes,
+        r.survey_date, r.survey_time, r.weather, r.eco_type,
+        r.review_status, r.review_memo, r.reviewed_by, r.reviewed_at,
         ri.registration_type, ri.results, ri.reinspection_memo,
         ec.vegetation_damage, ec.invasive_species, ec.environment_mgmt,
         ec.trail_condition, ec.photo_record, ec.guide_facility,

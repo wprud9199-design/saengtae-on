@@ -1149,6 +1149,8 @@ function adminHTML(): string { return `<!DOCTYPE html>
 <title>생태ON 관리자</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
@@ -1216,6 +1218,10 @@ tr:hover td{background:#fafffe}
 .s-보통{background:#fff3e0;color:#e65100}
 .s-불량{background:#fce4ec;color:#c62828}
 .s-고사{background:#efebe9;color:#3e2723}
+.rv-검토중{background:#fff3cd;color:#856404}
+.rv-승인{background:#e8f5e9;color:#2e7d32}
+.rv-반려{background:#fce4ec;color:#c62828}
+.rv-수정요청{background:#e3f2fd;color:#1565c0}
 
 /* ── 버튼 ── */
 .btn-p{padding:8px 16px;background:linear-gradient(135deg,#1a7a3c,#2d9e52);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
@@ -1297,7 +1303,10 @@ tr:hover td{background:#fafffe}
       <div class="nav-item active" onclick="goSec('dashboard')" id="nav-dashboard"><i class="fas fa-tachometer-alt"></i> 대시보드</div>
       <div class="nav-section">데이터 관리</div>
       <div class="nav-item" onclick="goSec('records')" id="nav-records"><i class="fas fa-database"></i> 기록 관리</div>
+      <div class="nav-item" onclick="goSec('review')" id="nav-review"><i class="fas fa-clipboard-check"></i> 검수 관리 <span id="reviewBadge" style="background:#ff9800;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:auto;display:none">0</span></div>
       <div class="nav-item" onclick="goSec('map')" id="nav-map"><i class="fas fa-map-marked-alt"></i> 지도 시각화</div>
+      <div class="nav-item" onclick="goSec('points')" id="nav-points"><i class="fas fa-map-pin"></i> 고정 지점 관리</div>
+      <div class="nav-item" onclick="goSec('photos')" id="nav-photos"><i class="fas fa-images"></i> 사진 관리</div>
       <div class="nav-item" onclick="goSec('stats')" id="nav-stats"><i class="fas fa-chart-bar"></i> 통계 분석</div>
       <div class="nav-section">회원 관리</div>
       <div class="nav-item" onclick="goSec('users')" id="nav-users"><i class="fas fa-users"></i> 회원 관리 <span id="pendingBadge" style="background:#ffc107;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:auto;display:none">0</span></div>
@@ -1335,6 +1344,24 @@ tr:hover td{background:#fafffe}
           <div class="stat-c brown"><div class="stat-n" id="ds-dead">-</div><div class="stat-l">고사</div></div>
           <div class="stat-c purple"><div class="stat-n" id="ds-photos">-</div><div class="stat-l">등록 사진</div></div>
         </div>
+        <!-- 검수 현황 요약 -->
+        <div class="card">
+          <div class="card-ttl"><i class="fas fa-clipboard-check"></i> 검수 현황</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px;background:#fff3cd;border-radius:10px;padding:12px;text-align:center;cursor:pointer" onclick="goSec('review')">
+              <div style="font-size:26px;font-weight:800;color:#856404" id="rv-pending">-</div>
+              <div style="font-size:11px;color:#856404;font-weight:600">검토중</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:#e8f5e9;border-radius:10px;padding:12px;text-align:center;cursor:pointer" onclick="goSec('review')">
+              <div style="font-size:26px;font-weight:800;color:#2e7d32" id="rv-approved">-</div>
+              <div style="font-size:11px;color:#2e7d32;font-weight:600">승인</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:#fce4ec;border-radius:10px;padding:12px;text-align:center;cursor:pointer" onclick="goSec('review')">
+              <div style="font-size:26px;font-weight:800;color:#c62828" id="rv-rejected">-</div>
+              <div style="font-size:11px;color:#c62828;font-weight:600">반려</div>
+            </div>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="card">
             <div class="card-ttl"><i class="fas fa-chart-line"></i> 최근 30일 기록 추이</div>
@@ -1351,6 +1378,14 @@ tr:hover td{background:#fafffe}
           <div class="card">
             <div class="card-ttl"><i class="fas fa-calendar"></i> 월별 기록 추이</div>
             <canvas id="chartMonthly" height="200"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-tags"></i> 등록유형별 현황</div>
+            <canvas id="chartRegType" height="200"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-check-circle"></i> 검수 상태 분포</div>
+            <canvas id="chartReview" height="200"></canvas>
           </div>
         </div>
         <div class="card">
@@ -1371,14 +1406,40 @@ tr:hover td{background:#fafffe}
             <input class="fi-sm" id="rf-kw" placeholder="🔍 종명·장소·이름 검색" oninput="filterRecs()"/>
             <select class="fi-sm" id="rf-st" onchange="filterRecs()" style="min-width:100px"><option value="">전체 상태</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
             <select class="fi-sm" id="rf-rg" onchange="filterRecs()" style="min-width:110px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
+            <select class="fi-sm" id="rf-rv" onchange="filterRecs()" style="min-width:100px"><option value="">전체 검수</option><option value="검토중">검토중</option><option value="승인">승인</option><option value="반려">반려</option><option value="수정요청">수정요청</option></select>
             <input type="date" class="fi-sm" id="rf-from" onchange="filterRecs()" style="min-width:130px"/>
             <input type="date" class="fi-sm" id="rf-to" onchange="filterRecs()" style="min-width:130px"/>
             <button class="btn-s" onclick="loadAdminRecs()"><i class="fas fa-sync-alt"></i> 새로고침</button>
           </div>
           <div class="tbl-wrap">
             <table>
-              <thead><tr><th>ID</th><th>종명</th><th>장소/지역</th><th>작성자</th><th>상태</th><th>좌표</th><th>사진</th><th>등록일</th><th>관리</th></tr></thead>
-              <tbody id="recTbody"><tr><td colspan="9" style="text-align:center;padding:24px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+              <thead><tr><th>ID</th><th>종명</th><th>장소/지역</th><th>작성자</th><th>상태</th><th>검수</th><th>사진</th><th>조사일</th><th>등록일</th><th>관리</th></tr></thead>
+              <tbody id="recTbody"><tr><td colspan="10" style="text-align:center;padding:24px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 검수 관리 ── -->
+      <div class="section" id="sec-review">
+        <div class="card">
+          <div class="card-ttl"><i class="fas fa-clipboard-check"></i> 데이터 검수 관리</div>
+          <div class="filter-bar">
+            <select class="fi-sm" id="rv-filter" onchange="filterReview()" style="min-width:110px">
+              <option value="">전체 상태</option>
+              <option value="검토중" selected>검토중</option>
+              <option value="승인">승인</option>
+              <option value="반려">반려</option>
+              <option value="수정요청">수정요청</option>
+            </select>
+            <select class="fi-sm" id="rv-rg" onchange="filterReview()" style="min-width:110px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
+            <input class="fi-sm" id="rv-kw" placeholder="🔍 검색" oninput="filterReview()" style="min-width:160px"/>
+            <button class="btn-s" onclick="loadAdminRecs()"><i class="fas fa-sync-alt"></i> 새로고침</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>종명</th><th>장소/지역</th><th>작성자</th><th>상태</th><th>검수상태</th><th>조사일</th><th>사진</th><th>검수 처리</th></tr></thead>
+              <tbody id="reviewTbody"><tr><td colspan="9" style="text-align:center;padding:24px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1388,19 +1449,26 @@ tr:hover td{background:#fafffe}
       <div class="section" id="sec-map">
         <div class="card">
           <div class="card-ttl"><i class="fas fa-map-marked-alt"></i> 지도 기반 데이터 시각화</div>
-          <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select class="fi-sm" id="map-st-filter" onchange="renderMap()" style="min-width:110px"><option value="">전체 상태</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
             <select class="fi-sm" id="map-rg-filter" onchange="renderMap()" style="min-width:120px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
-            <button class="btn-p" onclick="renderMap()"><i class="fas fa-map-marker-alt"></i> 지도 새로고침</button>
+            <select class="fi-sm" id="map-rt-filter" onchange="renderMap()" style="min-width:110px"><option value="">전체 유형</option><option value="신규등록">신규등록</option><option value="재점검">재점검</option></select>
+            <input type="date" class="fi-sm" id="map-from" onchange="renderMap()" style="min-width:130px"/>
+            <input type="date" class="fi-sm" id="map-to" onchange="renderMap()" style="min-width:130px"/>
+            <button class="btn-p" onclick="renderMap()"><i class="fas fa-sync-alt"></i> 새로고침</button>
           </div>
-          <div id="adminMap"></div>
-          <div class="map-legend">
+          <div id="adminMap" style="height:460px;border-radius:12px;border:1px solid #ddd"></div>
+          <div class="map-legend" style="margin-top:10px">
+            <div style="font-size:11px;font-weight:700;color:#555;margin-right:6px">상태별:</div>
             <div class="map-leg-item"><div class="map-dot" style="background:#4caf50"></div>양호</div>
             <div class="map-leg-item"><div class="map-dot" style="background:#ff9800"></div>보통</div>
             <div class="map-leg-item"><div class="map-dot" style="background:#f44336"></div>불량</div>
             <div class="map-leg-item"><div class="map-dot" style="background:#795548"></div>고사</div>
+            <div style="font-size:11px;font-weight:700;color:#555;margin-left:12px;margin-right:6px">유형별:</div>
+            <div class="map-leg-item"><div class="map-dot" style="background:#2196f3;border:2px solid #0d47a1"></div>신규등록</div>
+            <div class="map-leg-item"><div class="map-dot" style="background:#9c27b0;border:2px solid #6a1b9a"></div>재점검</div>
           </div>
-          <div id="mapInfo" style="margin-top:10px;font-size:12px;color:#888"></div>
+          <div id="mapInfo" style="margin-top:6px;font-size:12px;color:#888"></div>
         </div>
         <div class="card">
           <div class="card-ttl"><i class="fas fa-list-ul"></i> 좌표 등록 기록 목록</div>
@@ -1426,17 +1494,33 @@ tr:hover td{background:#fafffe}
             <div id="regionStatList"></div>
           </div>
           <div class="card">
-            <div class="card-ttl"><i class="fas fa-leaf"></i> 종별 기록 현황</div>
+            <div class="card-ttl"><i class="fas fa-leaf"></i> 종별 기록 현황 (TOP 10)</div>
             <div id="speciesStatList"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-calendar-alt"></i> 월별 기록 추이</div>
+            <canvas id="chartStMonth" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-calendar-check"></i> 연도별 기록</div>
+            <canvas id="chartStYear" height="180"></canvas>
           </div>
         </div>
         <div class="card">
           <div class="card-ttl"><i class="fas fa-user-chart"></i> 사용자별 활동 현황</div>
           <div id="userStatList"></div>
         </div>
-        <div class="card">
-          <div class="card-ttl"><i class="fas fa-chart-bar"></i> 상태별 분포 (기간 내)</div>
-          <canvas id="chartStatStatus" height="120"></canvas>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-chart-bar"></i> 상태별 분포</div>
+            <canvas id="chartStatStatus" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-ttl"><i class="fas fa-tags"></i> 등록유형별 현황</div>
+            <canvas id="chartStatRegType" height="180"></canvas>
+          </div>
         </div>
       </div>
 
@@ -1465,21 +1549,86 @@ tr:hover td{background:#fafffe}
         </div>
       </div>
 
+      <!-- ── 고정 지점 관리 ── -->
+      <div class="section" id="sec-points">
+        <div class="card">
+          <div class="card-ttl"><i class="fas fa-map-pin"></i> 고정 모니터링 지점 관리
+            <button class="btn-p" onclick="openPointModal()" style="margin-left:auto;padding:6px 13px"><i class="fas fa-plus"></i> 지점 추가</button>
+          </div>
+          <div class="filter-bar">
+            <select class="fi-sm" id="pt-filter-rg" onchange="filterPoints()" style="min-width:120px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
+            <input class="fi-sm" id="pt-filter-kw" placeholder="🔍 지점명 검색" oninput="filterPoints()" style="min-width:160px"/>
+            <button class="btn-s" onclick="loadPoints()"><i class="fas fa-sync-alt"></i> 새로고침</button>
+          </div>
+          <div id="pointMapWrap" style="height:300px;border-radius:12px;border:1px solid #ddd;margin-bottom:14px"></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>지점명</th><th>지역</th><th>생태계유형</th><th>좌표</th><th>설명</th><th>등록일</th><th>관리</th></tr></thead>
+              <tbody id="pointTbody"><tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 사진 관리 ── -->
+      <div class="section" id="sec-photos">
+        <div class="card">
+          <div class="card-ttl"><i class="fas fa-images"></i> 사진 관리</div>
+          <div class="filter-bar">
+            <select class="fi-sm" id="ph-rg" onchange="loadPhotos()" style="min-width:120px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
+            <select class="fi-sm" id="ph-rt" onchange="loadPhotos()" style="min-width:110px"><option value="">전체 유형</option><option value="신규등록">신규등록</option><option value="재점검">재점검</option></select>
+            <input type="date" class="fi-sm" id="ph-from" onchange="loadPhotos()" style="min-width:130px"/>
+            <input type="date" class="fi-sm" id="ph-to" onchange="loadPhotos()" style="min-width:130px"/>
+            <button class="btn-s" onclick="loadPhotos()"><i class="fas fa-sync-alt"></i> 조회</button>
+          </div>
+          <div id="photoStats" style="margin-bottom:10px;font-size:12px;color:#888"></div>
+          <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px"></div>
+          <div id="photoLoadMore" style="text-align:center;margin-top:14px;display:none">
+            <button class="btn-s" onclick="loadMorePhotos()"><i class="fas fa-plus"></i> 더 보기</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── 데이터 내보내기 ── -->
       <div class="section" id="sec-export">
+        <div class="card">
+          <div class="card-ttl"><i class="fas fa-filter"></i> 필터 설정</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:end">
+            <div>
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">시작일</label>
+              <input type="date" class="fi-sm" id="exp-from" style="width:100%"/>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">종료일</label>
+              <input type="date" class="fi-sm" id="exp-to" style="width:100%"/>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">지역</label>
+              <select class="fi-sm" id="exp-region" style="width:100%"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">등록유형</label>
+              <select class="fi-sm" id="exp-regtype" style="width:100%"><option value="">전체 유형</option><option value="신규등록">신규등록</option><option value="재점검">재점검</option></select>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">검수 상태</label>
+            <select class="fi-sm" id="exp-review" style="min-width:140px"><option value="">전체 검수</option><option value="검토중">검토중</option><option value="승인">승인</option><option value="반려">반려</option></select>
+          </div>
+        </div>
         <div class="card">
           <div class="card-ttl"><i class="fas fa-download"></i> 데이터 일괄 내보내기</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
             <div style="background:#f1f8e9;border-radius:12px;padding:16px;text-align:center">
               <i class="fas fa-file-csv" style="font-size:36px;color:#2d9e52;margin-bottom:10px;display:block"></i>
               <div style="font-size:14px;font-weight:700;color:#1a3a2a;margin-bottom:4px">CSV 내보내기</div>
-              <div style="font-size:11px;color:#888;margin-bottom:12px">Excel 호환 CSV 형식<br>모든 필드 포함</div>
+              <div style="font-size:11px;color:#888;margin-bottom:12px">전체 필드 포함<br>GPS·조사일시·검수상태</div>
               <button class="btn-p" onclick="exportCSV()" style="width:100%;justify-content:center"><i class="fas fa-download"></i> CSV 다운로드</button>
             </div>
             <div style="background:#e3f2fd;border-radius:12px;padding:16px;text-align:center">
               <i class="fas fa-file-excel" style="font-size:36px;color:#1565c0;margin-bottom:10px;display:block"></i>
               <div style="font-size:14px;font-weight:700;color:#1a3a2a;margin-bottom:4px">Excel 내보내기</div>
-              <div style="font-size:11px;color:#888;margin-bottom:12px">TSV 형식 (Excel 직접 열기)<br>한글 인코딩 최적화</div>
+              <div style="font-size:11px;color:#888;margin-bottom:12px">상세 TSV 형식<br>Excel 직접 열기 지원</div>
               <button class="btn-p" style="width:100%;justify-content:center;background:linear-gradient(135deg,#1565c0,#1e88e5)" onclick="exportExcel()"><i class="fas fa-download"></i> Excel 다운로드</button>
             </div>
             <div style="background:#fce4ec;border-radius:12px;padding:16px;text-align:center">
@@ -1489,15 +1638,6 @@ tr:hover td{background:#fafffe}
               <button class="btn-p" style="width:100%;justify-content:center;background:linear-gradient(135deg,#c62828,#e53935)" onclick="exportUsers()"><i class="fas fa-download"></i> 회원 CSV</button>
             </div>
           </div>
-          <div style="margin-top:14px;padding:14px;background:#f9f9f9;border-radius:10px">
-            <div style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px"><i class="fas fa-filter"></i> 기간 필터 적용</div>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="date" class="fi-sm" id="exp-from" style="min-width:130px"/>
-              <span style="color:#888">~</span>
-              <input type="date" class="fi-sm" id="exp-to" style="min-width:130px"/>
-              <span style="font-size:11px;color:#aaa">※ 비워두면 전체 기간</span>
-            </div>
-          </div>
           <div style="margin-top:14px" id="exportPreview"></div>
         </div>
       </div>
@@ -1505,6 +1645,56 @@ tr:hover td{background:#fafffe}
     </div><!-- page-wrap -->
   </div><!-- main -->
 </div><!-- adminWrap -->
+
+<!-- 고정 지점 등록/수정 모달 -->
+<div class="modal-bg" id="pointModal">
+  <div class="mbox">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="mttl"><i class="fas fa-map-pin"></i> <span id="pointModalTitle">지점 등록</span></div>
+      <button onclick="closePointModal()" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer">✕</button>
+    </div>
+    <input type="hidden" id="pt-id"/>
+    <div class="fgrid">
+      <div class="fg" style="grid-column:1/-1"><label class="fl">지점명 *</label><input class="fi" id="pt-name" placeholder="예) 한라산 진달래밭"/></div>
+      <div class="fg"><label class="fl">지역</label><select class="fs" id="pt-region"><option value="">선택</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">생태계유형</label><select class="fs" id="pt-ecotype"><option value="">선택</option><option>산림</option><option>초지</option><option>습지</option><option>하천</option><option>해안</option><option>농경지</option><option>도심녹지</option></select></div>
+      <div class="fg"><label class="fl">위도</label><input class="fi" type="number" id="pt-lat" step="0.000001" placeholder="33.xxxxxx"/></div>
+      <div class="fg"><label class="fl">경도</label><input class="fi" type="number" id="pt-lng" step="0.000001" placeholder="126.xxxxxx"/></div>
+    </div>
+    <div class="fg"><label class="fl">설명</label><textarea class="ft" id="pt-desc" placeholder="해당 지점의 특징 및 설명"></textarea></div>
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn-s" onclick="closePointModal()" style="flex:1">취소</button>
+      <button class="btn-p" onclick="savePoint()" style="flex:2;justify-content:center"><i class="fas fa-save"></i> 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 검수 처리 모달 -->
+<div class="modal-bg" id="reviewModal">
+  <div class="mbox" style="max-width:440px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="mttl"><i class="fas fa-clipboard-check"></i> 검수 처리</div>
+      <button onclick="closeReviewModal()" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer">✕</button>
+    </div>
+    <div id="reviewTargetInfo" style="background:#f9f9f9;border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;color:#555"></div>
+    <input type="hidden" id="rv-rec-id"/>
+    <div class="fg">
+      <label class="fl">검수 결과 *</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="rv-btn" id="rvb-검토중" onclick="setReviewStatus('검토중')" style="flex:1;padding:9px;border-radius:9px;border:2px solid #ffc107;background:#fff3cd;color:#856404;font-weight:700;cursor:pointer">🔍 검토중</button>
+        <button type="button" class="rv-btn" id="rvb-승인" onclick="setReviewStatus('승인')" style="flex:1;padding:9px;border-radius:9px;border:2px solid #ddd;background:#fafafa;color:#888;font-weight:700;cursor:pointer">✅ 승인</button>
+        <button type="button" class="rv-btn" id="rvb-반려" onclick="setReviewStatus('반려')" style="flex:1;padding:9px;border-radius:9px;border:2px solid #ddd;background:#fafafa;color:#888;font-weight:700;cursor:pointer">❌ 반려</button>
+        <button type="button" class="rv-btn" id="rvb-수정요청" onclick="setReviewStatus('수정요청')" style="flex:1;padding:9px;border-radius:9px;border:2px solid #ddd;background:#fafafa;color:#888;font-weight:700;cursor:pointer">📝 수정요청</button>
+      </div>
+      <input type="hidden" id="rv-status" value="검토중"/>
+    </div>
+    <div class="fg"><label class="fl">검수 메모 <span style="font-size:10px;color:#aaa">(반려/수정요청 시 사유 입력)</span></label><textarea class="ft" id="rv-memo" placeholder="검수 의견을 입력하세요..."></textarea></div>
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn-s" onclick="closeReviewModal()" style="flex:1">취소</button>
+      <button class="btn-p" onclick="submitReview()" style="flex:2;justify-content:center"><i class="fas fa-check"></i> 검수 저장</button>
+    </div>
+  </div>
+</div>
 
 <!-- 기록 수정 모달 -->
 <div class="modal-bg" id="editModal">
@@ -1608,8 +1798,10 @@ tr:hover td{background:#fafffe}
 
 <script>
 // ══ 전역 ══
-let aUser=null, allRecs=[], allUsers=[], statsData=null, mapMarkers=[]
-let editId=null, charts={}, mapIframe=null
+let aUser=null, allRecs=[], allUsers=[], allPoints=[], statsData=null
+let leafletMap=null, leafletMarkers=[], pointMap=null
+let editId=null, charts={}, reviewRecId=null, curReviewStatus='검토중'
+let photoOffset=0, photoTotal=0, photoData=[]
 
 // ══ 관리자 로그인 ══
 async function aLogin(){
@@ -1630,16 +1822,21 @@ function aLogout(){aUser=null;sessionStorage.removeItem('aUser');document.getEle
 function showAdmin(){document.getElementById('loginWrap').style.display='none';document.getElementById('adminWrap').style.display='block';if(aUser)document.getElementById('adminName').innerHTML=\`<i class="fas fa-user-shield" style="color:#2d9e52"></i> \${aUser.full_name||'관리자'}\`}
 
 // ══ 네비게이션 ══
-const secTitles={dashboard:'📊 대시보드',records:'🗃️ 기록 관리',map:'🗺️ 지도 시각화',stats:'📈 통계 분석',users:'👥 회원 관리',export:'📥 데이터 내보내기'}
+const secTitles={dashboard:'📊 대시보드',records:'🗃️ 기록 관리',review:'✅ 검수 관리',map:'🗺️ 지도 시각화',points:'📍 고정 지점 관리',photos:'🖼️ 사진 관리',stats:'📈 통계 분석',users:'👥 회원 관리',export:'📥 데이터 내보내기'}
 function goSec(s){
   document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'))
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'))
-  document.getElementById('sec-'+s).classList.add('active')
-  document.getElementById('nav-'+s).classList.add('active')
-  document.getElementById('topbarTitle').textContent=secTitles[s]
-  if(s==='map') setTimeout(renderMap,100)
+  const sec=document.getElementById('sec-'+s)
+  const nav=document.getElementById('nav-'+s)
+  if(sec) sec.classList.add('active')
+  if(nav) nav.classList.add('active')
+  document.getElementById('topbarTitle').textContent=secTitles[s]||s
+  if(s==='map') setTimeout(renderMap,150)
   if(s==='stats') loadStats()
   if(s==='users') loadUsers()
+  if(s==='review') filterReview()
+  if(s==='points') { loadPoints(); setTimeout(initPointMap,200) }
+  if(s==='photos') loadPhotos()
 }
 
 // ══ 전체 로드 ══
@@ -1662,15 +1859,20 @@ async function loadDashboard(){
     document.getElementById('ds-bad').textContent=s?.bad||0
     document.getElementById('ds-dead').textContent=s?.dead||0
     document.getElementById('ds-photos').textContent=d.data.photoStats?.total||0
+    // 검수 현황
+    document.getElementById('rv-pending').textContent=s?.review_pending||0
+    document.getElementById('rv-approved').textContent=s?.review_approved||0
+    document.getElementById('rv-rejected').textContent=s?.review_rejected||0
+    // 검토중 배지
+    const rp=s?.review_pending||0
+    if(rp>0){document.getElementById('reviewBadge').textContent=rp;document.getElementById('reviewBadge').style.display='inline-block'}
 
-    // 승인 대기 알림
     const pc=u?.pending||0
     if(pc>0){
       document.getElementById('pendingAlert').style.display='flex'
       document.getElementById('pendingBadge').textContent=pc
       document.getElementById('pendingBadge').style.display='inline-block'
     }
-
     buildCharts(d.data)
     buildTopUsers(d.data.byUser||[])
     buildRecentRecords()
@@ -1678,35 +1880,20 @@ async function loadDashboard(){
 }
 
 function buildCharts(data){
-  // 일별 추이
   const dly=document.getElementById('chartDaily')?.getContext('2d')
-  if(dly){
-    if(charts.daily)charts.daily.destroy()
-    const labels=(data.byDate||[]).map(x=>x.date?.slice(5))
-    const vals=(data.byDate||[]).map(x=>x.count)
-    charts.daily=new Chart(dly,{type:'line',data:{labels,datasets:[{label:'기록수',data:vals,borderColor:'#2d9e52',backgroundColor:'rgba(45,158,82,.1)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})
-  }
-  // 상태별
+  if(dly){if(charts.daily)charts.daily.destroy();const labels=(data.byDate||[]).map(x=>x.date?.slice(5));const vals=(data.byDate||[]).map(x=>x.count);charts.daily=new Chart(dly,{type:'line',data:{labels,datasets:[{label:'기록수',data:vals,borderColor:'#2d9e52',backgroundColor:'rgba(45,158,82,.1)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
   const st=document.getElementById('chartStatus')?.getContext('2d')
-  if(st){
-    if(charts.status)charts.status.destroy()
-    const s=data.summary||{}
-    charts.status=new Chart(st,{type:'doughnut',data:{labels:['양호','보통','불량','고사'],datasets:[{data:[s.good||0,s.normal||0,s.bad||0,s.dead||0],backgroundColor:['#4caf50','#ff9800','#f44336','#795548']}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}})
-  }
-  // 지역별
+  if(st){if(charts.status)charts.status.destroy();const s=data.summary||{};charts.status=new Chart(st,{type:'doughnut',data:{labels:['양호','보통','불량','고사'],datasets:[{data:[s.good||0,s.normal||0,s.bad||0,s.dead||0],backgroundColor:['#4caf50','#ff9800','#f44336','#795548']}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}})}
   const rg=document.getElementById('chartRegion')?.getContext('2d')
-  if(rg){
-    if(charts.region)charts.region.destroy()
-    const rd=(data.byRegion||[]).slice(0,8)
-    charts.region=new Chart(rg,{type:'bar',data:{labels:rd.map(x=>x.region),datasets:[{label:'기록수',data:rd.map(x=>x.count),backgroundColor:'rgba(45,158,82,.7)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})
-  }
-  // 월별
+  if(rg){if(charts.region)charts.region.destroy();const rd=(data.byRegion||[]).slice(0,8);charts.region=new Chart(rg,{type:'bar',data:{labels:rd.map(x=>x.region),datasets:[{label:'기록수',data:rd.map(x=>x.count),backgroundColor:'rgba(45,158,82,.7)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
   const mn=document.getElementById('chartMonthly')?.getContext('2d')
-  if(mn){
-    if(charts.monthly)charts.monthly.destroy()
-    const md=(data.byMonth||[]).slice(0,12).reverse()
-    charts.monthly=new Chart(mn,{type:'bar',data:{labels:md.map(x=>x.month),datasets:[{label:'기록수',data:md.map(x=>x.count),backgroundColor:'rgba(33,150,243,.6)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})
-  }
+  if(mn){if(charts.monthly)charts.monthly.destroy();const md=(data.byMonth||[]).slice(0,12).reverse();charts.monthly=new Chart(mn,{type:'bar',data:{labels:md.map(x=>x.month),datasets:[{label:'기록수',data:md.map(x=>x.count),backgroundColor:'rgba(33,150,243,.6)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
+  // 등록유형별
+  const rt=document.getElementById('chartRegType')?.getContext('2d')
+  if(rt){if(charts.regType)charts.regType.destroy();const rtd=data.byRegType||[];charts.regType=new Chart(rt,{type:'doughnut',data:{labels:rtd.map(x=>x.reg_type),datasets:[{data:rtd.map(x=>x.count),backgroundColor:['#2196f3','#9c27b0','#4caf50']}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}})}
+  // 검수 상태별
+  const rv=document.getElementById('chartReview')?.getContext('2d')
+  if(rv){if(charts.review)charts.review.destroy();const rvd=data.byReview||[];charts.review=new Chart(rv,{type:'doughnut',data:{labels:rvd.map(x=>x.review_status),datasets:[{data:rvd.map(x=>x.count),backgroundColor:['#ffc107','#4caf50','#f44336','#2196f3']}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}})}
 }
 
 function buildTopUsers(users){
@@ -1720,27 +1907,29 @@ async function buildRecentRecords(){
     const r=await fetch('/api/records?limit=5'); const d=await r.json()
     const el=document.getElementById('recentRecords')
     if(!d.success||!d.data.length){el.innerHTML='<div style="text-align:center;color:#aaa;font-size:12px;padding:16px">최근 기록이 없습니다.</div>';return}
-    el.innerHTML=\`<table><thead><tr><th>종명</th><th>장소</th><th>작성자</th><th>상태</th><th>등록일</th></tr></thead><tbody>\${d.data.slice(0,5).map(x=>\`<tr><td style="font-weight:600;color:#1a7a3c">\${x.species_name}</td><td>\${x.location_name}</td><td>\${x.reporter_name}</td><td><span class="badge s-\${x.condition_status}">\${x.condition_status}</span></td><td style="font-size:11px;color:#aaa">\${new Date(x.created_at).toLocaleDateString('ko-KR')}</td></tr>\`).join('')}</tbody></table>\`
+    el.innerHTML=\`<table><thead><tr><th>종명</th><th>장소</th><th>작성자</th><th>상태</th><th>검수</th><th>등록일</th></tr></thead><tbody>\${d.data.slice(0,5).map(x=>\`<tr><td style="font-weight:600;color:#1a7a3c">\${x.species_name}</td><td>\${x.location_name}</td><td>\${x.reporter_name}</td><td><span class="badge s-\${x.condition_status}">\${x.condition_status}</span></td><td><span class="badge rv-\${x.review_status||'검토중'}">\${x.review_status||'검토중'}</span></td><td style="font-size:11px;color:#aaa">\${new Date(x.created_at).toLocaleDateString('ko-KR')}</td></tr>\`).join('')}</tbody></table>\`
   }catch(e){}
 }
 
 // ══ 기록 관리 ══
 async function loadAdminRecs(){
   try{
-    const r=await fetch('/api/records'); const d=await r.json()
-    allRecs=d.data||[]; filterRecs()
+    const r=await fetch('/api/records?limit=200'); const d=await r.json()
+    allRecs=d.data||[]; filterRecs(); filterReview()
   }catch(e){}
 }
 function filterRecs(){
   const kw=(document.getElementById('rf-kw')?.value||'').toLowerCase()
   const st=document.getElementById('rf-st')?.value||''
   const rg=document.getElementById('rf-rg')?.value||''
+  const rv=document.getElementById('rf-rv')?.value||''
   const fr=document.getElementById('rf-from')?.value||''
   const to=document.getElementById('rf-to')?.value||''
   const f=allRecs.filter(r=>{
     if(kw&&!r.species_name?.toLowerCase().includes(kw)&&!r.location_name?.toLowerCase().includes(kw)&&!r.reporter_name?.toLowerCase().includes(kw)) return false
     if(st&&r.condition_status!==st) return false
     if(rg&&r.region!==rg) return false
+    if(rv&&(r.review_status||'검토중')!==rv) return false
     if(fr&&r.created_at<fr) return false
     if(to&&r.created_at.slice(0,10)>to) return false
     return true
@@ -1749,72 +1938,168 @@ function filterRecs(){
 }
 function renderRecTable(recs){
   const tb=document.getElementById('recTbody')
-  if(!recs.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#aaa">기록이 없습니다.</td></tr>';return}
+  if(!recs.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:#aaa">기록이 없습니다.</td></tr>';return}
   tb.innerHTML=recs.map(r=>{
     const dt=new Date(r.created_at).toLocaleDateString('ko-KR')
-    const coord=r.latitude?\`\${parseFloat(r.latitude).toFixed(4)},\${parseFloat(r.longitude).toFixed(4)}\`:'없음'
-    return\`<tr>
-      <td style="color:#bbb;font-size:11px">#\${r.id}</td>
-      <td style="font-weight:600;color:#1a7a3c">\${r.species_name}</td>
-      <td>\${r.location_name}<br><span style="font-size:10px;color:#aaa">\${r.region||''}</span></td>
-      <td>\${r.reporter_name}</td>
-      <td><span class="badge s-\${r.condition_status}">\${r.condition_status}</span></td>
-      <td style="font-size:10px;color:#888">\${coord}</td>
-      <td style="text-align:center">\${r.photo_count||0}</td>
-      <td style="font-size:11px;color:#aaa">\${dt}</td>
-      <td><div style="display:flex;gap:4px">
-        \${(r.photo_count||0)>0?'<button class="btn-e" onclick="viewPhotos('+r.id+')" title="사진 보기" style="color:#7b1fa2;border-color:#7b1fa2"><i class="fas fa-images"></i></button>':''}
-        <button class="btn-e" onclick="openEdit(\${r.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn-d" onclick="delRec(\${r.id})"><i class="fas fa-trash"></i></button>
-      </div></td>
-    </tr>\`
+    const rvStatus=r.review_status||'검토중'
+    return '<tr>'+
+      '<td style="color:#bbb;font-size:11px">#'+r.id+'</td>'+
+      '<td style="font-weight:600;color:#1a7a3c">'+r.species_name+'</td>'+
+      '<td>'+r.location_name+'<br><span style="font-size:10px;color:#aaa">'+(r.region||'')+'</span></td>'+
+      '<td>'+r.reporter_name+'</td>'+
+      '<td><span class="badge s-'+r.condition_status+'">'+r.condition_status+'</span></td>'+
+      '<td><span class="badge rv-'+rvStatus+'">'+rvStatus+'</span></td>'+
+      '<td style="text-align:center">'+(r.photo_count||0)+'</td>'+
+      '<td style="font-size:11px;color:#888">'+(r.survey_date||'-')+'</td>'+
+      '<td style="font-size:11px;color:#aaa">'+dt+'</td>'+
+      '<td><div style="display:flex;gap:4px">'+
+        ((r.photo_count||0)>0?'<button class="btn-e" onclick="viewPhotos('+r.id+')" title="사진 보기" style="color:#7b1fa2;border-color:#7b1fa2"><i class="fas fa-images"></i></button>':'')+
+        '<button class="btn-e" onclick="openEdit('+r.id+')"><i class="fas fa-edit"></i></button>'+
+        '<button class="btn-d" onclick="delRec('+r.id+')"><i class="fas fa-trash"></i></button>'+
+      '</div></td>'+
+    '</tr>'
   }).join('')
 }
 
-// ══ 지도 ══
+// ══ 검수 관리 ══
+function filterReview(){
+  const rv=document.getElementById('rv-filter')?.value||''
+  const rg=document.getElementById('rv-rg')?.value||''
+  const kw=(document.getElementById('rv-kw')?.value||'').toLowerCase()
+  const f=allRecs.filter(r=>{
+    const rvStatus=r.review_status||'검토중'
+    if(rv&&rvStatus!==rv) return false
+    if(rg&&r.region!==rg) return false
+    if(kw&&!r.species_name?.toLowerCase().includes(kw)&&!r.location_name?.toLowerCase().includes(kw)&&!r.reporter_name?.toLowerCase().includes(kw)) return false
+    return true
+  })
+  renderReviewTable(f)
+}
+function renderReviewTable(recs){
+  const tb=document.getElementById('reviewTbody')
+  if(!tb)return
+  if(!recs.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#aaa">기록이 없습니다.</td></tr>';return}
+  tb.innerHTML=recs.map(r=>{
+    const rvStatus=r.review_status||'검토중'
+    return '<tr>'+
+      '<td style="color:#bbb;font-size:11px">#'+r.id+'</td>'+
+      '<td style="font-weight:600;color:#1a7a3c">'+r.species_name+'</td>'+
+      '<td>'+r.location_name+'<br><span style="font-size:10px;color:#aaa">'+(r.region||'')+'</span></td>'+
+      '<td>'+r.reporter_name+'</td>'+
+      '<td><span class="badge s-'+r.condition_status+'">'+r.condition_status+'</span></td>'+
+      '<td><span class="badge rv-'+rvStatus+'">'+rvStatus+'</span></td>'+
+      '<td style="font-size:11px;color:#888">'+(r.survey_date||'-')+'</td>'+
+      '<td style="text-align:center">'+((r.photo_count||0)>0?'<button class="btn-e" onclick="viewPhotos('+r.id+')" style="color:#7b1fa2;border-color:#7b1fa2"><i class="fas fa-images"></i></button>':'없음')+'</td>'+
+      '<td><div style="display:flex;gap:4px;flex-wrap:wrap">'+
+        '<button class="btn-a" onclick="openReviewModal('+r.id+',\''+r.species_name+'\',\''+r.location_name+'\',\''+rvStatus+'\')"><i class="fas fa-gavel"></i> 검수</button>'+
+      '</div></td>'+
+    '</tr>'
+  }).join('')
+}
+
+// ══ 검수 모달 ══
+function openReviewModal(id,species,location,currentStatus){
+  reviewRecId=id; curReviewStatus=currentStatus||'검토중'
+  document.getElementById('rv-rec-id').value=id
+  document.getElementById('reviewTargetInfo').innerHTML='<strong>종명:</strong> '+species+' &nbsp;|&nbsp; <strong>장소:</strong> '+location
+  document.getElementById('rv-memo').value=''
+  setReviewStatus(currentStatus||'검토중')
+  document.getElementById('reviewModal').classList.add('vis')
+}
+function closeReviewModal(){document.getElementById('reviewModal').classList.remove('vis');reviewRecId=null}
+function setReviewStatus(status){
+  curReviewStatus=status
+  document.getElementById('rv-status').value=status
+  const btns=['검토중','승인','반려','수정요청']
+  const colors={'검토중':['#ffc107','#fff3cd','#856404'],'승인':['#4caf50','#e8f5e9','#2e7d32'],'반려':['#f44336','#fce4ec','#c62828'],'수정요청':['#2196f3','#e3f2fd','#1565c0']}
+  btns.forEach(b=>{
+    const el=document.getElementById('rvb-'+b)
+    if(!el)return
+    const c=colors[b]||['#ddd','#fafafa','#888']
+    if(b===status){el.style.borderColor=c[0];el.style.background=c[1];el.style.color=c[2]}
+    else{el.style.borderColor='#ddd';el.style.background='#fafafa';el.style.color='#888'}
+  })
+}
+async function submitReview(){
+  if(!reviewRecId)return
+  const status=document.getElementById('rv-status').value
+  const memo=document.getElementById('rv-memo').value
+  if((status==='반려'||status==='수정요청')&&!memo.trim()){toast('❌ 반려/수정요청 시 메모를 입력해주세요.');return}
+  try{
+    const r=await fetch('/api/admin/records/'+reviewRecId+'/review',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({review_status:status,review_memo:memo,reviewed_by:aUser?.full_name||'관리자'})})
+    const d=await r.json()
+    if(d.success){
+      toast('✅ 검수 처리 완료 ('+status+')')
+      closeReviewModal()
+      loadAdminRecs()
+      loadDashboard()
+    } else toast('❌ '+d.error)
+  }catch(e){toast('❌ 오류 발생')}
+}
+
+// ══ Leaflet 지도 ══
+let leafletInited=false
 function renderMap(){
   const stF=document.getElementById('map-st-filter')?.value||''
   const rgF=document.getElementById('map-rg-filter')?.value||''
-  const mapData=(statsData?.mapData||allRecs.filter(r=>r.latitude)).filter(r=>{
-    if(stF&&r.condition_status!==stF) return false
-    if(rgF&&r.region!==rgF) return false
-    return true
-  })
+  const rtF=document.getElementById('map-rt-filter')?.value||''
+  const fromF=document.getElementById('map-from')?.value||''
+  const toF=document.getElementById('map-to')?.value||''
   const mapDiv=document.getElementById('adminMap')
   if(!mapDiv)return
 
+  if(!leafletMap){
+    leafletMap=L.map('adminMap').setView([33.4800,126.5312],10)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(leafletMap)
+    leafletInited=true
+  }
+  leafletMarkers.forEach(m=>m.remove())
+  leafletMarkers=[]
+
   const colors={양호:'#4caf50',보통:'#ff9800',불량:'#f44336',고사:'#795548'}
-  const markers=mapData.filter(r=>r.latitude&&r.longitude).map(r=>\`
-    <div style="position:absolute;transform:translate(-50%,-50%);cursor:pointer;z-index:10"
-      data-lat="\${r.latitude}" data-lng="\${r.longitude}"
-      title="\${r.species_name} - \${r.condition_status}\\n\${r.location_name}\\n작성자: \${r.reporter_name}"
-      onclick="showMapInfo(\${r.id})">
-      <div style="width:14px;height:14px;border-radius:50%;background:\${colors[r.condition_status]||'#888'};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>
-    </div>
-  \`).join('')
+  const regColors={신규등록:'#2196f3',재점검:'#9c27b0'}
+  const allMapData=(statsData?.mapData||allRecs.filter(r=>r.latitude))
+  const mapData=allMapData.filter(r=>{
+    if(stF&&r.condition_status!==stF) return false
+    if(rgF&&r.region!==rgF) return false
+    if(rtF&&(r.registration_type||'신규등록')!==rtF) return false
+    if(fromF&&(r.created_at||'').slice(0,10)<fromF) return false
+    if(toF&&(r.created_at||'').slice(0,10)>toF) return false
+    return true
+  }).filter(r=>r.latitude&&r.longitude)
 
-  const center_lat=33.4800, center_lng=126.5312
-  mapDiv.innerHTML=\`
-    <iframe 
-      src="https://maps.google.com/maps?q=\${center_lat},\${center_lng}&z=10&output=embed&hl=ko"
-      style="width:100%;height:420px;border:none;border-radius:12px"
-      allowfullscreen>
-    </iframe>
-  \`
-  document.getElementById('mapInfo').textContent=\`총 \${mapData.length}건의 좌표 데이터가 있습니다. (Google Maps에 핀 표시 기능은 API Key 필요)\`
+  mapData.forEach(r=>{
+    const c=colors[r.condition_status]||'#888'
+    const rc=regColors[r.registration_type||'신규등록']||'#2196f3'
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="28" viewBox="0 0 24 28"><circle cx="12" cy="11" r="9" fill="'+c+'" stroke="'+rc+'" stroke-width="3"/><line x1="12" y1="20" x2="12" y2="28" stroke="'+c+'" stroke-width="2"/></svg>'
+    const icon=L.divIcon({html:svg,className:'',iconSize:[24,28],iconAnchor:[12,28],popupAnchor:[0,-28]})
+    const m=L.marker([r.latitude,r.longitude],{icon}).addTo(leafletMap)
+    const popup='<div style="font-size:12px;min-width:160px">'+
+      '<div style="font-weight:700;color:#1a7a3c;margin-bottom:4px">'+r.species_name+'</div>'+
+      '<div>📍 '+(r.location_name||'')+' ('+(r.region||'')+')</div>'+
+      '<div>👤 '+(r.reporter_name||'')+'</div>'+
+      '<div>📅 '+(r.survey_date||r.created_at?.slice(0,10)||'')+'</div>'+
+      '<div style="margin-top:4px">'+
+        '<span style="background:'+c+';color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;margin-right:4px">'+r.condition_status+'</span>'+
+        '<span style="background:'+rc+';color:#fff;padding:2px 7px;border-radius:10px;font-size:10px">'+(r.registration_type||'신규등록')+'</span>'+
+      '</div></div>'
+    m.bindPopup(popup)
+    leafletMarkers.push(m)
+  })
+  document.getElementById('mapInfo').textContent='총 '+mapData.length+'건의 좌표 데이터가 지도에 표시됩니다.'
 
-  // 좌표 목록 표시
   const listEl=document.getElementById('mapRecordList')
   if(listEl){
     if(!mapData.length){listEl.innerHTML='<div style="text-align:center;color:#aaa;font-size:12px;padding:16px">좌표가 등록된 기록이 없습니다.</div>';return}
-    listEl.innerHTML=\`<table><thead><tr><th>종명</th><th>장소/지역</th><th>상태</th><th>위도</th><th>경도</th><th>작성자</th><th>등록일</th></tr></thead><tbody>\${mapData.map(r=>\`<tr>
+    listEl.innerHTML=\`<table><thead><tr><th>종명</th><th>장소/지역</th><th>등록유형</th><th>상태</th><th>위도</th><th>경도</th><th>작성자</th><th>조사일</th></tr></thead><tbody>\${mapData.map(r=>\`<tr>
       <td style="font-weight:600;color:#1a7a3c">\${r.species_name}</td>
       <td>\${r.location_name}<br><span style="font-size:10px;color:#aaa">\${r.region||''}</span></td>
+      <td><span class="badge" style="background:#e3f2fd;color:#1565c0">\${r.registration_type||'신규등록'}</span></td>
       <td><span class="badge s-\${r.condition_status}">\${r.condition_status}</span></td>
       <td style="font-size:11px">\${parseFloat(r.latitude).toFixed(6)}</td>
       <td style="font-size:11px">\${parseFloat(r.longitude).toFixed(6)}</td>
       <td>\${r.reporter_name}</td>
-      <td style="font-size:11px;color:#aaa">\${new Date(r.created_at).toLocaleDateString('ko-KR')}</td>
+      <td style="font-size:11px;color:#aaa">\${r.survey_date||new Date(r.created_at).toLocaleDateString('ko-KR')}</td>
     </tr>\`).join('')}</tbody></table>\`
   }
 }
@@ -1833,7 +2118,6 @@ async function loadStats(){
     if(!d.success)return
     const data=d.data
 
-    // 지역별
     const rgEl=document.getElementById('regionStatList')
     if(rgEl){
       const total=(data.byRegion||[]).reduce((a,x)=>a+x.count,0)||1
@@ -1844,14 +2128,12 @@ async function loadStats(){
               <span style="font-weight:600">\${x.region}</span><span style="color:#888">\${x.count}건</span>
             </div>
             <div style="background:#f0f0f0;border-radius:10px;height:8px;overflow:hidden">
-              <div style="width:\${Math.round(x.count/total*100)}%;background:linear-gradient(90deg,#1a7a3c,#2d9e52);height:100%;border-radius:10px;transition:width .3s"></div>
+              <div style="width:\${Math.round(x.count/total*100)}%;background:linear-gradient(90deg,#1a7a3c,#2d9e52);height:100%;border-radius:10px"></div>
             </div>
-          </div>
-        \`).join(''):
+          </div>\`).join(''):
         '<div style="text-align:center;color:#aaa;font-size:12px;padding:16px">데이터 없음</div>'
     }
 
-    // 종별
     const spEl=document.getElementById('speciesStatList')
     if(spEl){
       spEl.innerHTML=(data.bySpecies||[]).length?
@@ -1859,7 +2141,6 @@ async function loadStats(){
         '<div style="text-align:center;color:#aaa;font-size:12px;padding:16px">데이터 없음</div>'
     }
 
-    // 사용자별
     const usEl=document.getElementById('userStatList')
     if(usEl){
       usEl.innerHTML=(data.byUser||[]).length?
@@ -1867,19 +2148,186 @@ async function loadStats(){
         '<div style="text-align:center;color:#aaa;font-size:12px;padding:16px">데이터 없음</div>'
     }
 
-    // 차트
+    // 월별 차트
+    const mnCtx=document.getElementById('chartStMonth')?.getContext('2d')
+    if(mnCtx){if(charts.stMonth)charts.stMonth.destroy();const md=(data.byMonth||[]).slice(0,12).reverse();charts.stMonth=new Chart(mnCtx,{type:'bar',data:{labels:md.map(x=>x.month),datasets:[{label:'기록수',data:md.map(x=>x.count),backgroundColor:'rgba(33,150,243,.65)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
+    // 연도별 차트
+    const yrCtx=document.getElementById('chartStYear')?.getContext('2d')
+    if(yrCtx){if(charts.stYear)charts.stYear.destroy();const yd=(data.byYear||[]).reverse();charts.stYear=new Chart(yrCtx,{type:'bar',data:{labels:yd.map(x=>x.year),datasets:[{label:'기록수',data:yd.map(x=>x.count),backgroundColor:'rgba(156,39,176,.65)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
+    // 상태별
     const statCtx=document.getElementById('chartStatStatus')?.getContext('2d')
-    if(statCtx){
-      if(charts.statStatus)charts.statStatus.destroy()
-      const s=data.summary||{}
-      charts.statStatus=new Chart(statCtx,{type:'bar',data:{labels:['양호','보통','불량','고사'],datasets:[{label:'기록수',data:[s.good||0,s.normal||0,s.bad||0,s.dead||0],backgroundColor:['#4caf50','#ff9800','#f44336','#795548'],borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})
-    }
+    if(statCtx){if(charts.statStatus)charts.statStatus.destroy();const s=data.summary||{};charts.statStatus=new Chart(statCtx,{type:'bar',data:{labels:['양호','보통','불량','고사'],datasets:[{label:'기록수',data:[s.good||0,s.normal||0,s.bad||0,s.dead||0],backgroundColor:['#4caf50','#ff9800','#f44336','#795548'],borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}})}
+    // 등록유형별
+    const rtCtx=document.getElementById('chartStatRegType')?.getContext('2d')
+    if(rtCtx){if(charts.statRegType)charts.statRegType.destroy();const rtd=data.byRegType||[];charts.statRegType=new Chart(rtCtx,{type:'doughnut',data:{labels:rtd.map(x=>x.reg_type),datasets:[{data:rtd.map(x=>x.count),backgroundColor:['#2196f3','#9c27b0']}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{font:{size:11}}}}}})}
   }catch(e){}
 }
 function clearStatFilter(){
   document.getElementById('st-from').value=''
   document.getElementById('st-to').value=''
   loadStats()
+}
+
+// ══ 고정 지점 관리 ══
+async function loadPoints(){
+  try{
+    const rg=document.getElementById('pt-filter-rg')?.value||''
+    const url='/api/admin/points'+(rg?'?region='+rg:'')
+    const r=await fetch(url); const d=await r.json()
+    allPoints=d.data||[]; filterPoints()
+  }catch(e){}
+}
+function filterPoints(){
+  const kw=(document.getElementById('pt-filter-kw')?.value||'').toLowerCase()
+  const f=allPoints.filter(p=>!kw||p.name?.toLowerCase().includes(kw)||(p.region||'').toLowerCase().includes(kw))
+  renderPointTable(f)
+  updatePointMap(f)
+}
+function renderPointTable(pts){
+  const tb=document.getElementById('pointTbody')
+  if(!tb)return
+  if(!pts.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:#aaa">등록된 지점이 없습니다.</td></tr>';return}
+  tb.innerHTML=pts.map(p=>'<tr>'+
+    '<td style="color:#bbb;font-size:11px">#'+p.id+'</td>'+
+    '<td style="font-weight:600;color:#1a7a3c">'+p.name+'</td>'+
+    '<td>'+(p.region||'-')+'</td>'+
+    '<td>'+(p.eco_type||'-')+'</td>'+
+    '<td style="font-size:11px;color:#888">'+(p.latitude?parseFloat(p.latitude).toFixed(4)+','+parseFloat(p.longitude).toFixed(4):'없음')+'</td>'+
+    '<td style="font-size:11px">'+(p.description||'-')+'</td>'+
+    '<td style="font-size:11px;color:#aaa">'+new Date(p.created_at).toLocaleDateString('ko-KR')+'</td>'+
+    '<td><div style="display:flex;gap:4px">'+
+      '<button class="btn-e" onclick="editPoint('+p.id+')"><i class="fas fa-edit"></i></button>'+
+      '<button class="btn-d" onclick="delPoint('+p.id+')"><i class="fas fa-trash"></i></button>'+
+    '</div></td>'+
+  '</tr>').join('')
+}
+function initPointMap(){
+  const el=document.getElementById('pointMapWrap')
+  if(!el||pointMap)return
+  pointMap=L.map('pointMapWrap').setView([33.4800,126.5312],10)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(pointMap)
+  updatePointMap(allPoints)
+}
+let ptMarkers=[]
+function updatePointMap(pts){
+  if(!pointMap)return
+  ptMarkers.forEach(m=>m.remove()); ptMarkers=[]
+  pts.filter(p=>p.latitude&&p.longitude).forEach(p=>{
+    const m=L.marker([p.latitude,p.longitude]).addTo(pointMap)
+    m.bindPopup('<b>'+p.name+'</b><br>'+(p.region||'')+' '+(p.eco_type||''))
+    ptMarkers.push(m)
+  })
+}
+function openPointModal(id){
+  document.getElementById('pt-id').value=id||''
+  document.getElementById('pointModalTitle').textContent=id?'지점 수정':'지점 등록'
+  if(id){
+    const p=allPoints.find(x=>x.id===id)
+    if(p){
+      document.getElementById('pt-name').value=p.name||''
+      document.getElementById('pt-region').value=p.region||''
+      document.getElementById('pt-ecotype').value=p.eco_type||''
+      document.getElementById('pt-lat').value=p.latitude||''
+      document.getElementById('pt-lng').value=p.longitude||''
+      document.getElementById('pt-desc').value=p.description||''
+    }
+  } else {
+    document.getElementById('pt-name').value=''
+    document.getElementById('pt-region').value=''
+    document.getElementById('pt-ecotype').value=''
+    document.getElementById('pt-lat').value=''
+    document.getElementById('pt-lng').value=''
+    document.getElementById('pt-desc').value=''
+  }
+  document.getElementById('pointModal').classList.add('vis')
+}
+function closePointModal(){document.getElementById('pointModal').classList.remove('vis')}
+async function savePoint(){
+  const id=document.getElementById('pt-id').value
+  const name=document.getElementById('pt-name').value.trim()
+  if(!name){toast('❌ 지점명을 입력해주세요.');return}
+  const payload={
+    name,
+    region:document.getElementById('pt-region').value||null,
+    latitude:parseFloat(document.getElementById('pt-lat').value)||null,
+    longitude:parseFloat(document.getElementById('pt-lng').value)||null,
+    eco_type:document.getElementById('pt-ecotype').value||null,
+    description:document.getElementById('pt-desc').value||null
+  }
+  const url=id?'/api/admin/points/'+id:'/api/admin/points'
+  const method=id?'PUT':'POST'
+  try{
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    const d=await r.json()
+    if(d.success){toast('✅ 저장 완료');closePointModal();loadPoints()} else toast('❌ '+d.error)
+  }catch(e){toast('❌ 오류 발생')}
+}
+function editPoint(id){openPointModal(id)}
+async function delPoint(id){
+  if(!confirm('지점 #'+id+'를 삭제하시겠습니까?'))return
+  try{
+    const r=await fetch('/api/admin/points/'+id,{method:'DELETE'})
+    const d=await r.json()
+    if(d.success){toast('✅ 삭제 완료');loadPoints()} else toast('❌ '+d.error)
+  }catch(e){toast('❌ 오류 발생')}
+}
+
+// ══ 사진 관리 ══
+async function loadPhotos(reset){
+  if(reset===undefined)reset=true
+  if(reset){photoOffset=0;photoData=[]}
+  const rg=document.getElementById('ph-rg')?.value||''
+  const rt=document.getElementById('ph-rt')?.value||''
+  const from=document.getElementById('ph-from')?.value||''
+  const to=document.getElementById('ph-to')?.value||''
+  const params=[]
+  if(rg) params.push('region='+rg)
+  if(rt) params.push('reg_type='+rt)
+  if(from) params.push('from='+from)
+  if(to) params.push('to='+to)
+  params.push('limit=20&offset='+photoOffset)
+  try{
+    const r=await fetch('/api/admin/photos?'+params.join('&')); const d=await r.json()
+    if(!d.success)return
+    photoTotal=d.total||0
+    photoData=reset?d.data||[]:[...photoData,...(d.data||[])]
+    photoOffset+=d.data?.length||0
+    renderPhotoGrid()
+    document.getElementById('photoStats').textContent='총 '+photoTotal+'장 사진 (현재 '+photoData.length+'장 표시)'
+    const loadMore=document.getElementById('photoLoadMore')
+    if(loadMore) loadMore.style.display=photoOffset<photoTotal?'block':'none'
+  }catch(e){}
+}
+function loadMorePhotos(){loadPhotos(false)}
+function renderPhotoGrid(){
+  const el=document.getElementById('photoGrid')
+  if(!el)return
+  if(!photoData.length){el.innerHTML='<div style="text-align:center;color:#aaa;font-size:12px;padding:32px;grid-column:1/-1">사진이 없습니다.</div>';return}
+  // 날짜별 그룹핑
+  const groups={}
+  photoData.forEach(p=>{
+    const dt=(p.survey_date||p.record_date||'').slice(0,10)||'날짜 없음'
+    if(!groups[dt])groups[dt]=[]
+    groups[dt].push(p)
+  })
+  let html=''
+  Object.keys(groups).sort().reverse().forEach(dt=>{
+    const phs=groups[dt]
+    html+='<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:#1a7a3c;margin:6px 0 4px;padding-bottom:4px;border-bottom:1px solid #e8f0e8"><i class="fas fa-calendar-day"></i> '+dt+' ('+phs.length+'장)</div>'
+    phs.forEach(p=>{
+      html+='<div style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer" onclick="viewPhotos('+p.record_id+')">'+
+        '<div style="height:120px;background:#f5f5f5;display:flex;align-items:center;justify-content:center">'+
+          '<i class="fas fa-image" style="font-size:32px;color:#ddd"></i>'+
+        '</div>'+
+        '<div style="padding:7px 9px">'+
+          '<div style="font-size:11px;font-weight:600;color:#1a7a3c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.species_name+'</div>'+
+          '<div style="font-size:10px;color:#888;margin-top:1px">'+(p.region||'')+(p.registration_type==='재점검'?' · <span style="color:#9c27b0">재점검</span>':'')+'</div>'+
+          '<div style="font-size:10px;color:#aaa">'+p.reporter_name+'</div>'+
+        '</div>'+
+      '</div>'
+    })
+  })
+  el.innerHTML=html
 }
 
 // ══ 회원 관리 ══
@@ -1930,27 +2378,27 @@ function renderUserTable(users){
 
 async function approveUser(id){
   if(!confirm('이 회원을 승인하시겠습니까?'))return
-  const r=await fetch(\`/api/admin/users/\${id}/approve\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved_by:aUser?.username||'admin'})})
+  const r=await fetch('/api/admin/users/'+id+'/approve',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved_by:aUser?.username||'admin'})})
   const d=await r.json()
   if(d.success){toast('✅ 승인되었습니다.');loadUsers();loadDashboard()} else toast('❌ '+d.error)
 }
 async function rejectUser(id){
   const reason=prompt('거절 사유를 입력하세요 (선택사항):')
   if(reason===null)return
-  const r=await fetch(\`/api/admin/users/\${id}/reject\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})})
+  const r=await fetch('/api/admin/users/'+id+'/reject',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})})
   const d=await r.json()
   if(d.success){toast('✅ 거절처리 되었습니다.');loadUsers();loadDashboard()} else toast('❌ '+d.error)
 }
 async function suspendUser(id,suspend){
   if(!confirm(suspend?'이 회원을 정지시키겠습니까?':'이 회원의 정지를 해제하겠습니까?'))return
-  const r=await fetch(\`/api/admin/users/\${id}/suspend\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({suspend})})
+  const r=await fetch('/api/admin/users/'+id+'/suspend',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({suspend})})
   const d=await r.json()
   if(d.success){toast(suspend?'⛔ 정지되었습니다.':'🔓 정지 해제되었습니다.');loadUsers()} else toast('❌ '+d.error)
 }
 async function toggleAdmin(id,cur){
   const msg=cur?'관리자 권한을 제거하시겠습니까?':'관리자 권한을 부여하시겠습니까?'
   if(!confirm(msg))return
-  const r=await fetch(\`/api/admin/users/\${id}/role\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_admin:!cur})})
+  const r=await fetch('/api/admin/users/'+id+'/role',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_admin:!cur})})
   const d=await r.json()
   if(d.success){toast('✅ 권한이 변경되었습니다.');loadUsers()} else toast('❌ '+d.error)
 }
@@ -1960,7 +2408,7 @@ function closeUserModal(){document.getElementById('userModal').classList.remove(
 async function openEdit(id){
   editId=id
   try{
-    const r=await fetch(\`/api/records/\${id}\`); const d=await r.json()
+    const r=await fetch('/api/records/'+id); const d=await r.json()
     if(!d.success){toast('로드 실패');return}
     const rec=d.data
     document.getElementById('e-nm').value=rec.reporter_name||''
@@ -1975,12 +2423,11 @@ async function openEdit(id){
     if(rec.reinspection){
       const ri=rec.reinspection
       document.getElementById('e-regtype').value = ri.registration_type||'신규등록'
-      // 결과 체크박스 복원
       const labels=['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일']
       const savedResults = Array.isArray(ri.results) ? ri.results
         : (typeof ri.results==='string' ? ri.results.split(',').filter(Boolean) : [])
       for(let i=1;i<=9;i++){
-        const cb=document.getElementById(\`e-ri-\${i}\`)
+        const cb=document.getElementById('e-ri-'+i)
         if(cb) cb.checked=savedResults.includes(labels[i-1])
       }
       document.getElementById('e-rimemo').value=ri.reinspection_memo||''
@@ -2000,7 +2447,7 @@ function closeEdit(){document.getElementById('editModal').classList.remove('vis'
 async function saveEdit(){
   if(!editId)return
   const eLabels=['제거(교란종 등) 완료','재발생 없음','재발생 확인','확산 확인','개체 수 감소','개체 수 증가','추가 조치 필요','지속 관찰 필요','이전 조사와 동일']
-  const eChecked=eLabels.filter((_,i)=>{const cb=document.getElementById(\`e-ri-\${i+1}\`);return cb&&cb.checked})
+  const eChecked=eLabels.filter((_,i)=>{const cb=document.getElementById('e-ri-'+(i+1));return cb&&cb.checked})
   const payload={
     reporter_name:document.getElementById('e-nm').value,
     location_name:document.getElementById('e-loc').value,
@@ -2018,14 +2465,14 @@ async function saveEdit(){
     },
     checklist:{vegetation_damage:document.getElementById('e-cl-v').value,invasive_species:document.getElementById('e-cl-i').value,environment_mgmt:document.getElementById('e-cl-e').value,trail_condition:document.getElementById('e-cl-t').value,photo_record:document.getElementById('e-cl-p').value,guide_facility:document.getElementById('e-cl-g').value}
   }
-  const r=await fetch(\`/api/records/\${editId}\`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  const r=await fetch('/api/records/'+editId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   const d=await r.json()
   if(d.success){toast('✅ 수정 완료');closeEdit();loadAdminRecs();loadDashboard()} else toast('❌ '+d.error)
 }
 
 async function delRec(id){
-  if(!confirm(\`기록 #\${id}를 삭제하시겠습니까?\`))return
-  const r=await fetch(\`/api/records/\${id}\`,{method:'DELETE'})
+  if(!confirm('기록 #'+id+'를 삭제하시겠습니까?'))return
+  const r=await fetch('/api/records/'+id,{method:'DELETE'})
   const d=await r.json()
   if(d.success){toast('✅ 삭제 완료');loadAdminRecs();loadDashboard()} else toast('❌ '+d.error)
 }
@@ -2035,13 +2482,11 @@ let pvPhotos=[], pvIdx=0, pvRecId=null, pvRecInfo=''
 
 async function viewPhotos(id){
   try{
-    const r=await fetch(\`/api/records/\${id}\`); const d=await r.json()
+    const r=await fetch('/api/records/'+id); const d=await r.json()
     if(!d.success||!d.data.photos||!d.data.photos.length){toast('📷 사진이 없습니다.');return}
-    pvPhotos=d.data.photos
-    pvIdx=0
-    pvRecId=id
-    pvRecInfo=\`\${d.data.species_name||''}(\${d.data.location_name||''}) - \${d.data.reporter_name||''}\`
-    document.getElementById('pvTitle').textContent=\`📷 \${pvRecInfo}\`
+    pvPhotos=d.data.photos; pvIdx=0; pvRecId=id
+    pvRecInfo=(d.data.species_name||'')+'('+(d.data.location_name||'')+') - '+(d.data.reporter_name||'')
+    document.getElementById('pvTitle').textContent='📷 '+pvRecInfo
     pvRender()
     document.getElementById('photoViewModal').classList.add('vis')
   }catch(e){toast('❌ 사진 로드 실패')}
@@ -2051,13 +2496,11 @@ function pvRender(){
   if(!pvPhotos.length)return
   const ph=pvPhotos[pvIdx]
   document.getElementById('pvImg').src=ph.photo_data||''
-  document.getElementById('pvCounter').textContent=\`\${pvIdx+1} / \${pvPhotos.length}\`
+  document.getElementById('pvCounter').textContent=(pvIdx+1)+' / '+pvPhotos.length
   document.getElementById('pvPrev').style.display=pvIdx>0?'flex':'none'
   document.getElementById('pvNext').style.display=pvIdx<pvPhotos.length-1?'flex':'none'
-  // 썸네일
-  document.getElementById('pvThumbs').innerHTML=pvPhotos.map((p,i)=>\`
-    <img src="\${p.photo_data||''}" onclick="pvJump(\${i})"
-      style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;opacity:\${i===pvIdx?1:0.45};border:\${i===pvIdx?'2px solid #a8e6bc':'2px solid transparent'};transition:all .2s"/>\`).join('')
+  document.getElementById('pvThumbs').innerHTML=pvPhotos.map((p,i)=>
+    '<img src="'+(p.photo_data||'')+'" onclick="pvJump('+i+')" style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;opacity:'+(i===pvIdx?1:0.45)+';border:'+(i===pvIdx?'2px solid #a8e6bc':'2px solid transparent')+';transition:all .2s"/>').join('')
 }
 
 function pvNav(dir){pvIdx=Math.max(0,Math.min(pvPhotos.length-1,pvIdx+dir));pvRender()}
@@ -2067,37 +2510,40 @@ function closePhotoModal(){document.getElementById('photoViewModal').classList.r
 function dlCurrentPhoto(){
   if(!pvPhotos.length)return
   const ph=pvPhotos[pvIdx]
-  const name=ph.photo_name||\`photo_\${pvIdx+1}.jpg\`
+  const name=ph.photo_name||('photo_'+(pvIdx+1)+'.jpg')
   const a=document.createElement('a')
-  a.href=ph.photo_data||''
-  a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
-  a.click()
-  toast(\`✅ 사진 \${pvIdx+1} 저장됨\`)
+  a.href=ph.photo_data||''; a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
+  a.click(); toast('✅ 사진 '+(pvIdx+1)+' 저장됨')
 }
 
 async function dlAllPhotos(){
   if(!pvPhotos.length)return
-  toast(\`📥 전체 \${pvPhotos.length}장 저장 중...\`)
+  toast('📥 전체 '+pvPhotos.length+'장 저장 중...')
   for(let i=0;i<pvPhotos.length;i++){
     await new Promise(res=>setTimeout(res,300))
     const ph=pvPhotos[i]
-    const name=ph.photo_name||\`photo_\${i+1}.jpg\`
+    const name=ph.photo_name||('photo_'+(i+1)+'.jpg')
     const a=document.createElement('a')
-    a.href=ph.photo_data||''
-    a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
+    a.href=ph.photo_data||''; a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
     a.click()
   }
-  toast(\`✅ \${pvPhotos.length}장 저장 완료\`)
+  toast('✅ '+pvPhotos.length+'장 저장 완료')
 }
 
 // ══ 내보내기 ══
 async function getExportData(){
   const from=document.getElementById('exp-from')?.value||''
   const to=document.getElementById('exp-to')?.value||''
+  const region=document.getElementById('exp-region')?.value||''
+  const regtype=document.getElementById('exp-regtype')?.value||''
+  const review=document.getElementById('exp-review')?.value||''
   let url='/api/admin/export'
   const p=[]
   if(from) p.push('from='+from)
   if(to) p.push('to='+to)
+  if(region) p.push('region='+region)
+  if(regtype) p.push('reg_type='+regtype)
+  if(review) p.push('review_status='+review)
   if(p.length) url+='?'+p.join('&')
   const r=await fetch(url); const d=await r.json()
   return d.success?d.data:[]
@@ -2106,9 +2552,9 @@ async function getExportData(){
 async function exportCSV(){
   const data=await getExportData()
   if(!data.length){toast('내보낼 데이터가 없습니다.');return}
-  const hdrs=['ID','종명','장소','지역','작성자','회원명','소속','상태','위도','경도','특이사항','등록유형','재점검결과','재점검메모','식생훼손','외래종','환경관리','탐방로','사진기록','안내시설','등록일시','수정일시','수정자','사진수']
-  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.member_name||'',r.organization||'',r.condition_status,r.latitude||'',r.longitude||'',(r.special_notes||'').replace(/,/g,'；'),r.registration_type||'신규등록',(r.results||'').replace(/,/g,'|'),r.reinspection_memo||'',r.vegetation_damage||'',r.invasive_species||'',r.environment_mgmt||'',r.trail_condition||'',r.photo_record||'',r.guide_facility||'',r.created_at,r.updated_at||'',r.updated_by||'',r.photo_count||0])
-  const csv='\\uFEFF'+[hdrs,...rows].map(r=>r.join(',')).join('\\n')
+  const hdrs=['ID','종명','장소','지역','작성자','회원명','소속','상태','위도','경도','특이사항','조사일','조사시각','날씨','생태계유형','검수상태','검수메모','검수자','검수일시','등록유형','재점검결과','재점검메모','식생훼손','외래종','환경관리','탐방로','사진기록','안내시설','등록일시','수정일시','수정자','사진수']
+  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.member_name||'',r.organization||'',r.condition_status,r.latitude||'',r.longitude||'',(r.special_notes||'').replace(/,/g,'；'),r.survey_date||'',r.survey_time||'',r.weather||'',r.eco_type||'',r.review_status||'검토중',(r.review_memo||'').replace(/,/g,'；'),r.reviewed_by||'',r.reviewed_at||'',r.registration_type||'신규등록',(r.results||'').replace(/,/g,'|'),r.reinspection_memo||'',r.vegetation_damage||'',r.invasive_species||'',r.environment_mgmt||'',r.trail_condition||'',r.photo_record||'',r.guide_facility||'',r.created_at,r.updated_at||'',r.updated_by||'',r.photo_count||0])
+  const csv='\uFEFF'+[hdrs,...rows].map(r=>r.join(',')).join('\n')
   dl(csv,'text/csv;charset=utf-8','생태ON_기록_'+now()+'.csv')
   toast('✅ CSV 다운로드 완료 ('+data.length+'건)')
 }
@@ -2116,10 +2562,10 @@ async function exportCSV(){
 async function exportExcel(){
   const data=await getExportData()
   if(!data.length){toast('내보낼 데이터가 없습니다.');return}
-  const hdrs=['ID\\t종명\\t장소\\t지역\\t작성자\\t상태\\t위도\\t경도\\t특이사항\\t등록일시']
-  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.condition_status,r.latitude||'',r.longitude||'',r.special_notes||'',r.created_at].join('\\t'))
-  const tsv=[hdrs[0],...rows].join('\\n')
-  dl('\\uFEFF'+tsv,'text/tab-separated-values;charset=utf-8','생태ON_기록_'+now()+'.tsv')
+  const hdrs='ID\t종명\t장소\t지역\t작성자\t회원명\t소속\t상태\t위도\t경도\t특이사항\t조사일\t조사시각\t날씨\t생태계유형\t검수상태\t등록유형\t재점검결과\t재점검메모\t등록일시\t사진수'
+  const rows=data.map(r=>[r.id,r.species_name,r.location_name,r.region||'',r.reporter_name,r.member_name||'',r.organization||'',r.condition_status,r.latitude||'',r.longitude||'',r.special_notes||'',r.survey_date||'',r.survey_time||'',r.weather||'',r.eco_type||'',r.review_status||'검토중',r.registration_type||'신규등록',r.results||'',r.reinspection_memo||'',r.created_at,r.photo_count||0].join('\t'))
+  const tsv=[hdrs,...rows].join('\n')
+  dl('\uFEFF'+tsv,'text/tab-separated-values;charset=utf-8','생태ON_기록_'+now()+'.tsv')
   toast('✅ Excel 파일 다운로드 완료')
 }
 
@@ -2129,7 +2575,7 @@ async function exportUsers(){
     if(!d.success){toast('❌ 실패');return}
     const hdrs=['ID','아이디','이름','소속','지역','상태','권한','이메일','연락처','가입일','마지막로그인','기록수']
     const rows=d.data.map(u=>[u.id,u.username,u.full_name,u.organization||'',u.region||'',u.role,u.is_admin?'관리자':'일반',u.email||'',u.phone||'',u.created_at,u.last_login||'',u.record_count||0])
-    const csv='\\uFEFF'+[hdrs,...rows].map(r=>r.join(',')).join('\\n')
+    const csv='\uFEFF'+[hdrs,...rows].map(r=>r.join(',')).join('\n')
     dl(csv,'text/csv;charset=utf-8','생태ON_회원_'+now()+'.csv')
     toast('✅ 회원 CSV 다운로드 완료')
   }catch(e){toast('❌ 오류 발생')}
