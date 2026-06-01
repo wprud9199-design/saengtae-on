@@ -258,6 +258,48 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
         <div class="card">
           <div class="card-ttl"><i class="fas fa-user-circle"></i> 기본 정보</div>
           <div class="fg"><label class="fl">이름 <span class="req">*</span></label><input class="fi" id="rName" placeholder="이름 입력" required/></div>
+          <!-- 조사일자 / 조사일시 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="fg">
+              <label class="fl">조사일자 <span class="req">*</span></label>
+              <input type="date" class="fi" id="rSurveyDate" required/>
+            </div>
+            <div class="fg">
+              <label class="fl">조사시각 <span class="req">*</span></label>
+              <input type="time" class="fi" id="rSurveyTime" required/>
+            </div>
+          </div>
+          <!-- 날씨 -->
+          <div class="fg">
+            <label class="fl">날씨 <span class="req">*</span></label>
+            <select class="fs" id="rWeather" required>
+              <option value="">-- 날씨를 선택하세요 --</option>
+              <option>☀️ 맑음</option>
+              <option>⛅ 구름 조금</option>
+              <option>☁️ 흐림</option>
+              <option>🌧️ 비</option>
+              <option>⛈️ 천둥번개</option>
+              <option>🌨️ 눈</option>
+              <option>🌬️ 바람</option>
+              <option>🌫️ 안개</option>
+            </select>
+          </div>
+          <!-- 생태계 유형 -->
+          <div class="fg">
+            <label class="fl">생태계 유형 <span class="req">*</span></label>
+            <select class="fs" id="rEcoType" required>
+              <option value="">-- 생태계 유형을 선택하세요 --</option>
+              <option>산림</option>
+              <option>초지·습초지</option>
+              <option>습지·하천</option>
+              <option>해안·연안</option>
+              <option>농경지</option>
+              <option>도시·인공지</option>
+              <option>오름</option>
+              <option>곶자왈</option>
+              <option>기타</option>
+            </select>
+          </div>
           <div class="fg"><label class="fl">장소명 <span class="req">*</span></label><input class="fi" id="rLoc" placeholder="조사 장소명" required/></div>
           <div class="fg">
             <label class="fl">지역 <span class="req">*</span></label>
@@ -803,6 +845,42 @@ async function submitForm(e){
     return
   }
 
+  // ── 조사일자 필수 검사 ──
+  const surveyDate = document.getElementById('rSurveyDate').value
+  if(!surveyDate){
+    toast('📅 조사일자를 선택해주세요.')
+    document.getElementById('rSurveyDate').focus()
+    document.getElementById('rSurveyDate').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
+  // ── 조사시각 필수 검사 ──
+  const surveyTime = document.getElementById('rSurveyTime').value
+  if(!surveyTime){
+    toast('🕐 조사시각을 선택해주세요.')
+    document.getElementById('rSurveyTime').focus()
+    document.getElementById('rSurveyTime').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
+  // ── 날씨 필수 검사 ──
+  const weather = document.getElementById('rWeather').value
+  if(!weather){
+    toast('🌤️ 날씨를 선택해주세요.')
+    document.getElementById('rWeather').focus()
+    document.getElementById('rWeather').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
+  // ── 생태계 유형 필수 검사 ──
+  const ecoType = document.getElementById('rEcoType').value
+  if(!ecoType){
+    toast('🌿 생태계 유형을 선택해주세요.')
+    document.getElementById('rEcoType').focus()
+    document.getElementById('rEcoType').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
   // ── 체크리스트 전체 선택 검사 ──
   const clIds = ['cl-v','cl-i','cl-e','cl-t','cl-p','cl-g']
   const clNames = ['① 식생 훼손 여부','② 외래종 발생','③ 환경 관리','④ 탐방로 상태','⑤ 사진 기록','⑥ 안내시설']
@@ -826,6 +904,10 @@ async function submitForm(e){
       condition_status:document.getElementById('rStatus').value,
       latitude:G.lat, longitude:G.lng,
       special_notes:document.getElementById('rNotes').value,
+      survey_date: surveyDate,
+      survey_time: surveyTime,
+      weather: weather,
+      eco_type: ecoType,
       photos:G.photos,
       reinspection:{removal_done:G.checks.rm,no_recurrence:G.checks.nr,spread_check:G.checks.sc,
         reinspection_memo:document.getElementById('riMemo').value,
@@ -851,6 +933,10 @@ function resetForm(){
   document.getElementById('locDisp').classList.remove('vis')
   document.querySelectorAll('.cbox').forEach(b=>b.classList.remove('ck'))
   document.getElementById('rName').value=G.user?.full_name||''
+  document.getElementById('rSurveyDate').value=''
+  document.getElementById('rSurveyTime').value=''
+  document.getElementById('rWeather').value=''
+  document.getElementById('rEcoType').value=''
 }
 
 // ══ 목록 ══
@@ -1384,6 +1470,37 @@ tr:hover td{background:#fafffe}
   </div>
 </div>
 
+<!-- 사진 뷰어 모달 -->
+<div class="modal-bg" id="photoViewModal" onclick="if(event.target===this)closePhotoModal()" style="background:rgba(0,0,0,.88)">
+  <div style="width:100%;max-width:680px;margin:auto;position:relative">
+    <!-- 헤더 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,.08);border-radius:14px 14px 0 0">
+      <div style="color:#fff;font-size:14px;font-weight:700" id="pvTitle">사진 보기</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="dlCurrentPhoto()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:8px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <i class="fas fa-download"></i> 현재 사진 저장
+        </button>
+        <button onclick="dlAllPhotos()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:8px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <i class="fas fa-images"></i> 전체 저장
+        </button>
+        <button onclick="closePhotoModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <!-- 사진 영역 -->
+    <div style="background:#111;min-height:360px;display:flex;align-items:center;justify-content:center;position:relative">
+      <img id="pvImg" src="" alt="사진" style="max-width:100%;max-height:70vh;object-fit:contain;display:block"/>
+      <!-- 이전/다음 버튼 -->
+      <button id="pvPrev" onclick="pvNav(-1)" style="position:absolute;left:10px;background:rgba(0,0,0,.5);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#8249;</button>
+      <button id="pvNext" onclick="pvNav(1)"  style="position:absolute;right:10px;background:rgba(0,0,0,.5);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#8250;</button>
+    </div>
+    <!-- 인디케이터 + 썸네일 -->
+    <div style="background:rgba(0,0,0,.7);padding:10px 14px;border-radius:0 0 14px 14px">
+      <div style="text-align:center;color:rgba(255,255,255,.6);font-size:12px;margin-bottom:8px" id="pvCounter">1 / 1</div>
+      <div id="pvThumbs" style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="atoast"></div>
 
 <script>
@@ -1543,6 +1660,7 @@ function renderRecTable(recs){
       <td style="text-align:center">\${r.photo_count||0}</td>
       <td style="font-size:11px;color:#aaa">\${dt}</td>
       <td><div style="display:flex;gap:4px">
+        \${(r.photo_count||0)>0?'<button class="btn-e" onclick="viewPhotos('+r.id+')" title="사진 보기" style="color:#7b1fa2;border-color:#7b1fa2"><i class="fas fa-images"></i></button>':''}
         <button class="btn-e" onclick="openEdit(\${r.id})"><i class="fas fa-edit"></i></button>
         <button class="btn-d" onclick="delRec(\${r.id})"><i class="fas fa-trash"></i></button>
       </div></td>
@@ -1795,6 +1913,66 @@ async function delRec(id){
   const r=await fetch(\`/api/records/\${id}\`,{method:'DELETE'})
   const d=await r.json()
   if(d.success){toast('✅ 삭제 완료');loadAdminRecs();loadDashboard()} else toast('❌ '+d.error)
+}
+
+// ══ 사진 뷰어 ══
+let pvPhotos=[], pvIdx=0, pvRecId=null, pvRecInfo=''
+
+async function viewPhotos(id){
+  try{
+    const r=await fetch(\`/api/records/\${id}\`); const d=await r.json()
+    if(!d.success||!d.data.photos||!d.data.photos.length){toast('📷 사진이 없습니다.');return}
+    pvPhotos=d.data.photos
+    pvIdx=0
+    pvRecId=id
+    pvRecInfo=\`\${d.data.species_name||''}(\${d.data.location_name||''}) - \${d.data.reporter_name||''}\`
+    document.getElementById('pvTitle').textContent=\`📷 \${pvRecInfo}\`
+    pvRender()
+    document.getElementById('photoViewModal').classList.add('vis')
+  }catch(e){toast('❌ 사진 로드 실패')}
+}
+
+function pvRender(){
+  if(!pvPhotos.length)return
+  const ph=pvPhotos[pvIdx]
+  document.getElementById('pvImg').src=ph.photo_data||''
+  document.getElementById('pvCounter').textContent=\`\${pvIdx+1} / \${pvPhotos.length}\`
+  document.getElementById('pvPrev').style.display=pvIdx>0?'flex':'none'
+  document.getElementById('pvNext').style.display=pvIdx<pvPhotos.length-1?'flex':'none'
+  // 썸네일
+  document.getElementById('pvThumbs').innerHTML=pvPhotos.map((p,i)=>\`
+    <img src="\${p.photo_data||''}" onclick="pvJump(\${i})"
+      style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;opacity:\${i===pvIdx?1:0.45};border:\${i===pvIdx?'2px solid #a8e6bc':'2px solid transparent'};transition:all .2s"/>\`).join('')
+}
+
+function pvNav(dir){pvIdx=Math.max(0,Math.min(pvPhotos.length-1,pvIdx+dir));pvRender()}
+function pvJump(i){pvIdx=i;pvRender()}
+function closePhotoModal(){document.getElementById('photoViewModal').classList.remove('vis');pvPhotos=[];pvIdx=0}
+
+function dlCurrentPhoto(){
+  if(!pvPhotos.length)return
+  const ph=pvPhotos[pvIdx]
+  const name=ph.photo_name||\`photo_\${pvIdx+1}.jpg\`
+  const a=document.createElement('a')
+  a.href=ph.photo_data||''
+  a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
+  a.click()
+  toast(\`✅ 사진 \${pvIdx+1} 저장됨\`)
+}
+
+async function dlAllPhotos(){
+  if(!pvPhotos.length)return
+  toast(\`📥 전체 \${pvPhotos.length}장 저장 중...\`)
+  for(let i=0;i<pvPhotos.length;i++){
+    await new Promise(res=>setTimeout(res,300))
+    const ph=pvPhotos[i]
+    const name=ph.photo_name||\`photo_\${i+1}.jpg\`
+    const a=document.createElement('a')
+    a.href=ph.photo_data||''
+    a.download=name.endsWith('.jpg')||name.endsWith('.png')||name.endsWith('.jpeg')?name:name+'.jpg'
+    a.click()
+  }
+  toast(\`✅ \${pvPhotos.length}장 저장 완료\`)
 }
 
 // ══ 내보내기 ══

@@ -41,6 +41,10 @@ async function initDB(db: D1Database) {
       latitude REAL,
       longitude REAL,
       special_notes TEXT,
+      survey_date TEXT,
+      survey_time TEXT,
+      weather TEXT,
+      eco_type TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME,
       updated_by TEXT,
@@ -192,6 +196,7 @@ api.post('/records', async (c) => {
     const body = await c.req.json()
     const { reporter_name, location_name, species_name, condition_status='양호',
       latitude, longitude, special_notes, user_id, region,
+      survey_date=null, survey_time=null, weather=null, eco_type=null,
       photos=[], reinspection=null, checklist=null } = body
 
     if (!reporter_name||!location_name||!species_name)
@@ -206,10 +211,11 @@ api.post('/records', async (c) => {
 
     const result = await c.env.DB.prepare(`
       INSERT INTO monitoring_records
-        (user_id,reporter_name,location_name,region,species_name,condition_status,latitude,longitude,special_notes)
-      VALUES(?,?,?,?,?,?,?,?,?)
+        (user_id,reporter_name,location_name,region,species_name,condition_status,latitude,longitude,special_notes,survey_date,survey_time,weather,eco_type)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(user_id||null, reporter_name, location_name, region||null, species_name,
-      condition_status, latitude||null, longitude||null, special_notes||null).run()
+      condition_status, latitude||null, longitude||null, special_notes||null,
+      survey_date||null, survey_time||null, weather||null, eco_type||null).run()
 
     const recordId = result.meta.last_row_id
     // 사진 저장 - 에러가 나도 기록은 유지, 사진만 건너뜀
@@ -252,17 +258,23 @@ api.put('/records/:id', async (c) => {
     const id = c.req.param('id')
     const body = await c.req.json()
     const { reporter_name,location_name,region,species_name,condition_status,
-      latitude,longitude,special_notes,updated_by,reinspection=null,checklist=null } = body
+      latitude,longitude,special_notes,updated_by,
+      survey_date=null,survey_time=null,weather=null,eco_type=null,
+      reinspection=null,checklist=null } = body
 
     const existing = await c.env.DB.prepare('SELECT id FROM monitoring_records WHERE id=?').bind(id).first()
     if (!existing) return c.json({ success: false, error: '기록을 찾을 수 없습니다.' }, 404)
 
     await c.env.DB.prepare(`UPDATE monitoring_records SET
       reporter_name=?,location_name=?,region=?,species_name=?,condition_status=?,
-      latitude=?,longitude=?,special_notes=?,updated_at=CURRENT_TIMESTAMP,updated_by=?
+      latitude=?,longitude=?,special_notes=?,
+      survey_date=?,survey_time=?,weather=?,eco_type=?,
+      updated_at=CURRENT_TIMESTAMP,updated_by=?
       WHERE id=?`)
       .bind(reporter_name,location_name,region||null,species_name,condition_status,
-        latitude||null,longitude||null,special_notes||null,updated_by||null,id).run()
+        latitude||null,longitude||null,special_notes||null,
+        survey_date||null,survey_time||null,weather||null,eco_type||null,
+        updated_by||null,id).run()
 
     if (reinspection) {
       await c.env.DB.prepare(`INSERT OR REPLACE INTO reinspection_records
