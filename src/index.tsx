@@ -22,6 +22,8 @@ function mainHTML(): string { return `<!DOCTYPE html>
 <title>생태ON | 제주 생태 모니터링</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0f7f0;margin:0}
@@ -118,10 +120,18 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 #mapModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center}
 #mapModal.vis{display:flex}
 .map-wrap{background:#fff;border-radius:18px;overflow:hidden;width:calc(100vw - 28px);max-width:455px;max-height:92vh;display:flex;flex-direction:column}
-.map-hdr{padding:13px 15px;background:#1a7a3c;color:#fff;display:flex;justify-content:space-between;align-items:center}
-#mapFrame{flex:1;min-height:300px;width:100%;border:none}
-.map-ft{padding:11px 15px;border-top:1px solid #eee;background:#f9f9f9}
-.map-coords{font-size:11px;color:#666;margin-bottom:7px}
+.map-hdr{padding:13px 15px;background:#1a7a3c;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+#leafletMap{flex:1;min-height:340px;width:100%;z-index:1}
+.map-ft{padding:11px 15px;border-top:1px solid #eee;background:#f9f9f9;flex-shrink:0}
+.map-coords-box{background:#f1f8e9;border:1.5px solid #a5d6a7;border-radius:9px;padding:8px 12px;font-size:12px;color:#2e7d32;display:flex;align-items:center;gap:7px;min-height:36px;margin-bottom:9px}
+.map-hint{font-size:11px;color:#aaa;text-align:center;margin-bottom:8px}
+.map-btn-row{display:flex;gap:7px}
+.map-loc-btn{flex:1;padding:9px 0;background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.map-loc-btn:active{opacity:.85}
+/* Leaflet z-index 조정 (모달 내부에서 정상 작동하도록) */
+.leaflet-pane{z-index:2!important}
+.leaflet-top,.leaflet-bottom{z-index:3!important}
+.leaflet-control{z-index:3!important}
 
 /* ── 인증 화면 ── */
 .auth-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#1a7a3c 0%,#2d9e52 40%,#f0f7f0 70%)}
@@ -343,27 +353,26 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
   <div class="map-wrap">
     <div class="map-hdr">
       <h3 style="font-size:14px;font-weight:700"><i class="fas fa-map-marked-alt"></i> 위치 선택</h3>
-      <button onclick="closeMap()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>
+      <button onclick="closeMap()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1">✕</button>
     </div>
-    <iframe id="mapFrame" src="about:blank"></iframe>
+    <!-- Leaflet 지도 컨테이너 -->
+    <div id="leafletMap"></div>
     <div class="map-ft">
-      <div class="map-coords" id="mapCoords">좌표를 직접 입력하거나 프리셋을 선택하세요.</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="number" id="mLat" placeholder="위도 (33.xxxx)" step="0.0001" style="flex:1;padding:7px 9px;border:1.5px solid #ddd;border-radius:7px;font-size:12px" value="33.4996"/>
-        <input type="number" id="mLng" placeholder="경도 (126.xxxx)" step="0.0001" style="flex:1;padding:7px 9px;border:1.5px solid #ddd;border-radius:7px;font-size:12px" value="126.5312"/>
-        <button onclick="applyCoords()" style="padding:7px 12px;background:#1a7a3c;color:#fff;border:none;border-radius:7px;font-size:12px;cursor:pointer">확인</button>
+      <!-- 선택된 좌표 표시 -->
+      <div class="map-coords-box" id="mapCoordsBox">
+        <i class="fas fa-map-pin" style="color:#a5d6a7;flex-shrink:0"></i>
+        <span id="mapCoordsText">지도를 탭하여 위치를 선택하세요</span>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-        <button onclick="preset(33.3617,126.5292,'한라산')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">🏔 한라산</button>
-        <button onclick="preset(33.5097,126.5219,'제주시청')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">📍 제주시</button>
-        <button onclick="preset(33.2530,126.5101,'서귀포시청')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">📍 서귀포</button>
-        <button onclick="preset(33.4590,126.9419,'성산일출봉')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">🌅 성산</button>
-        <button onclick="preset(33.3993,126.2494,'모슬포')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">📍 대정</button>
-        <button onclick="preset(33.5131,126.5195,'용두암')" style="padding:4px 9px;background:#fff;border:1px solid #ccc;border-radius:6px;font-size:10px;cursor:pointer">📍 용두암</button>
-      </div>
-      <div style="display:flex;gap:7px">
+      <div class="map-hint">📍 원하는 위치를 탭하면 마커가 자동으로 설치됩니다</div>
+      <!-- 내 위치 + 확인/취소 버튼 -->
+      <div class="map-btn-row">
+        <button class="map-loc-btn" onclick="goMyLoc()" style="background:linear-gradient(135deg,#0277bd,#0288d1)">
+          <i class="fas fa-location-arrow"></i> 내 위치
+        </button>
         <button class="btn-s" onclick="closeMap()" style="flex:1">취소</button>
-        <button class="btn-p" onclick="confirmLoc()" style="flex:2;padding:10px" id="confirmLocBtn" disabled><i class="fas fa-check"></i> 이 위치 선택</button>
+        <button class="btn-p" onclick="confirmLoc()" style="flex:2;padding:9px 0;justify-content:center" id="confirmLocBtn" disabled>
+          <i class="fas fa-check"></i> 이 위치 선택
+        </button>
       </div>
     </div>
   </div>
@@ -536,43 +545,166 @@ function addPhotos(e){
 }
 function delPhoto(i){G.photos.splice(i,1);renderPhotoGrid()}
 
-// ══ 지도 ══
+// ══ 지도 (Leaflet.js) ══
+let _map = null       // Leaflet 인스턴스
+let _marker = null    // 선택 마커
+let _myCircle = null  // 내 위치 파란 원
+let _myDot = null     // 내 위치 중심점
+
+function _updateCoordsUI(la, lg){
+  document.getElementById('mapCoordsText').textContent =
+    \`📍 위도: \${la.toFixed(6)}, 경도: \${lg.toFixed(6)}\`
+  document.getElementById('mapCoordsBox').style.background='#e8f5e9'
+  document.getElementById('mapCoordsBox').style.borderColor='#4caf50'
+  document.getElementById('confirmLocBtn').disabled=false
+  G.pLat=la; G.pLng=lg
+}
+
 function openMap(){
-  const m=document.getElementById('mapModal'); m.classList.add('vis')
-  const c=G.lat||33.4996, g=G.lng||126.5312
-  document.getElementById('mapFrame').src=\`https://maps.google.com/maps?q=\${c},\${g}&z=12&output=embed&hl=ko\`
-  document.getElementById('mLat').value=c; document.getElementById('mLng').value=g
-  document.getElementById('mapCoords').textContent='좌표를 직접 입력하거나 프리셋을 선택하세요.'
+  document.getElementById('mapModal').classList.add('vis')
   document.getElementById('confirmLocBtn').disabled=true
   G.pLat=null; G.pLng=null
+
+  // 좌표 표시 초기화
+  document.getElementById('mapCoordsText').textContent='지도를 탭하여 위치를 선택하세요'
+  document.getElementById('mapCoordsBox').style.background=''
+  document.getElementById('mapCoordsBox').style.borderColor=''
+
+  // 이미 기록된 위치가 있으면 해당 좌표, 없으면 제주도 중심
+  const initLat = G.lat||33.4800
+  const initLng = G.lng||126.5312
+
+  // 지도가 이미 초기화됐으면 invalidateSize만 호출
+  if(_map){
+    _map.setView([initLat, initLng], G.lat?14:11)
+    // 기존 선택 마커 복원
+    if(G.lat){
+      if(_marker) _map.removeLayer(_marker)
+      _marker = L.marker([G.lat, G.lng], {icon: _pinIcon()}).addTo(_map)
+      _updateCoordsUI(G.lat, G.lng)
+    }
+    setTimeout(()=>_map.invalidateSize(), 200)
+    return
+  }
+
+  // 최초 초기화
+  setTimeout(()=>{
+    _map = L.map('leafletMap', {
+      center:[initLat, initLng],
+      zoom: G.lat?14:11,
+      zoomControl:true,
+      attributionControl:true
+    })
+
+    // OpenStreetMap 타일
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom:19
+    }).addTo(_map)
+
+    // 기존 위치가 있으면 마커 표시
+    if(G.lat){
+      _marker = L.marker([G.lat, G.lng], {icon: _pinIcon()}).addTo(_map)
+      _updateCoordsUI(G.lat, G.lng)
+    }
+
+    // 지도 클릭 → 마커 설치 + 좌표 자동 입력
+    _map.on('click', (e)=>{
+      const la=e.latlng.lat, lg=e.latlng.lng
+      if(_marker) _map.removeLayer(_marker)
+      _marker = L.marker([la,lg], {icon: _pinIcon()}).addTo(_map)
+      _updateCoordsUI(la, lg)
+    })
+
+    // 내 위치 실시간 표시
+    _showMyLocation()
+
+    // 크기 보정
+    setTimeout(()=>_map.invalidateSize(), 250)
+  }, 80)
 }
-function applyCoords(){
-  const la=parseFloat(document.getElementById('mLat').value), lg=parseFloat(document.getElementById('mLng').value)
-  if(isNaN(la)||isNaN(lg)){toast('올바른 좌표를 입력하세요.');return}
-  G.pLat=la; G.pLng=lg
-  document.getElementById('mapFrame').src=\`https://maps.google.com/maps?q=\${la},\${lg}&z=15&output=embed&hl=ko\`
-  document.getElementById('mapCoords').textContent=\`📍 위도: \${la.toFixed(6)}, 경도: \${lg.toFixed(6)}\`
-  document.getElementById('confirmLocBtn').disabled=false
+
+// 커스텀 핀 아이콘 (초록색)
+function _pinIcon(){
+  return L.divIcon({
+    className:'',
+    html:\`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+      <path d="M14 0C6.27 0 0 6.27 0 14c0 9.33 14 22 14 22S28 23.33 28 14C28 6.27 21.73 0 14 0z"
+        fill="#1a7a3c" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="14" cy="14" r="5" fill="#fff"/>
+    </svg>\`,
+    iconSize:[28,36], iconAnchor:[14,36], popupAnchor:[0,-36]
+  })
 }
-function preset(la,lg,nm){
-  document.getElementById('mLat').value=la; document.getElementById('mLng').value=lg
-  G.pLat=la; G.pLng=lg
-  document.getElementById('mapFrame').src=\`https://maps.google.com/maps?q=\${la},\${lg}&z=14&output=embed&hl=ko\`
-  document.getElementById('mapCoords').textContent=\`📍 \${nm} (위도: \${la}, 경도: \${lg})\`
-  document.getElementById('confirmLocBtn').disabled=false
+
+// 내 위치 파란 점 표시
+function _showMyLocation(){
+  if(!navigator.geolocation) return
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const la=pos.coords.latitude, lg=pos.coords.longitude
+      const acc=pos.coords.accuracy
+      // 기존 내 위치 레이어 제거
+      if(_myCircle){ _map.removeLayer(_myCircle); _myCircle=null }
+      if(_myDot){ _map.removeLayer(_myDot); _myDot=null }
+      // 정확도 원
+      _myCircle = L.circle([la,lg],{
+        radius:acc, color:'#2196F3', fillColor:'#2196F3',
+        fillOpacity:.1, weight:1
+      }).addTo(_map)
+      // 파란 점
+      _myDot = L.circleMarker([la,lg],{
+        radius:9, color:'#fff', fillColor:'#2196F3',
+        fillOpacity:1, weight:2.5
+      }).addTo(_map).bindPopup('내 현재 위치')
+    },
+    ()=>{ /* 위치 거부 시 무시 */ },
+    {enableHighAccuracy:true, timeout:8000, maximumAge:0}
+  )
 }
+
+// "내 위치" 버튼
+function goMyLoc(){
+  if(!_map){toast('지도가 아직 로드되지 않았습니다.');return}
+  if(!navigator.geolocation){toast('이 기기에서 위치 정보를 사용할 수 없습니다.');return}
+  toast('📡 위치를 가져오는 중...')
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const la=pos.coords.latitude, lg=pos.coords.longitude
+      _map.setView([la,lg],16)
+      // 내 위치 레이어 갱신
+      if(_myCircle){ _map.removeLayer(_myCircle); _myCircle=null }
+      if(_myDot){ _map.removeLayer(_myDot); _myDot=null }
+      _myCircle = L.circle([la,lg],{
+        radius:pos.coords.accuracy, color:'#2196F3', fillColor:'#2196F3',
+        fillOpacity:.1, weight:1
+      }).addTo(_map)
+      _myDot = L.circleMarker([la,lg],{
+        radius:9, color:'#fff', fillColor:'#2196F3',
+        fillOpacity:1, weight:2.5
+      }).addTo(_map).bindPopup('내 현재 위치').openPopup()
+    },
+    (err)=>{
+      const msgs={1:'위치 권한이 거부되었습니다.',2:'위치를 확인할 수 없습니다.',3:'위치 요청 시간이 초과되었습니다.'}
+      toast(msgs[err.code]||'위치를 가져올 수 없습니다.')
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+  )
+}
+
 function confirmLoc(){
-  if(!G.pLat){toast('위치를 먼저 선택하세요.');return}
+  if(G.pLat==null){toast('지도를 탭하여 위치를 먼저 선택하세요.');return}
   G.lat=G.pLat; G.lng=G.pLng
-  document.getElementById('rLat').value=G.lat; document.getElementById('rLng').value=G.lng
+  document.getElementById('rLat').value=G.lat
+  document.getElementById('rLng').value=G.lng
   const d=document.getElementById('locDisp'); d.classList.add('vis')
   document.getElementById('locTxt').textContent='위치 선택 완료'
   document.getElementById('coordTxt').textContent=\`위도: \${G.lat.toFixed(6)}, 경도: \${G.lng.toFixed(6)}\`
-  closeMap(); toast('위치가 선택되었습니다.')
+  closeMap(); toast('✅ 위치가 선택되었습니다.')
 }
+
 function closeMap(){
   document.getElementById('mapModal').classList.remove('vis')
-  document.getElementById('mapFrame').src='about:blank'
 }
 
 // ══ 폼 제출 ══
