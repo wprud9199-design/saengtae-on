@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "saengtae-on-production",
-      "database_id": "local-dev-db"
+      "database_id": "981e19d0-fa9d-49b0-ae58-87e7f957701b"
     }
   ]
 }
