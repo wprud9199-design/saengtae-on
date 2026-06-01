@@ -192,6 +192,10 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
     <div class="auth-panel active" id="apanel-login">
       <div class="fg"><label class="fl">아이디</label><input class="fi" id="login-id" placeholder="아이디 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <div class="fg"><label class="fl">비밀번호</label><input class="fi" type="password" id="login-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;cursor:pointer" onclick="tglSave()">
+        <div class="cbox" id="save-cbox" style="width:18px;height:18px;border-radius:4px"></div>
+        <span style="font-size:12px;color:#666">아이디 · 비밀번호 저장</span>
+      </div>
       <button class="btn-p" onclick="doLogin()" id="loginBtn"><i class="fas fa-sign-in-alt"></i> 로그인</button>
       <div id="loginMsg" style="margin-top:10px;font-size:12px;text-align:center;color:#e53935;display:none"></div>
       <div class="pending-box" id="pendingBox" style="display:none">
@@ -396,6 +400,21 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 let G = { user:null, photos:[], lat:null, lng:null, pLat:null, pLng:null,
           checks:{rm:false,nr:false,sc:false} }
 
+// ══ 아이디/비밀번호 저장 체크박스 ══
+function tglSave(){
+  const box=document.getElementById('save-cbox')
+  const isSaved=box.classList.contains('ck')
+  if(isSaved){
+    box.classList.remove('ck')
+    localStorage.removeItem('savedId')
+    localStorage.removeItem('savedPw')
+    localStorage.removeItem('saveLogin')
+  } else {
+    box.classList.add('ck')
+    localStorage.setItem('saveLogin','1')
+  }
+}
+
 // ══ 인증 전환 ══
 function switchAuth(t){
   document.querySelectorAll('.auth-tab').forEach(x=>x.classList.remove('active'))
@@ -424,6 +443,11 @@ async function doLogin(){
     const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:id,password:pw})})
     const d=await r.json()
     if(d.success){
+      // 아이디/비밀번호 저장 체크 시 localStorage에 보관
+      if(localStorage.getItem('saveLogin')==='1'){
+        localStorage.setItem('savedId', id)
+        localStorage.setItem('savedPw', pw)
+      }
       G.user=d.data
       sessionStorage.setItem('user',JSON.stringify(d.data))
       showApp()
@@ -733,6 +757,12 @@ function closeMap(){
 // ══ 폼 제출 ══
 async function submitForm(e){
   e.preventDefault()
+  // ── 사진 필수 검사 ──
+  if(G.photos.length===0){
+    toast('📷 사진을 1장 이상 등록해주세요.')
+    document.getElementById('pgrid').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
   const btn=document.getElementById('subBtn'); btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 저장 중...'
   try{
     const payload={
@@ -864,7 +894,18 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // ══ 초기화 ══
 const saved=sessionStorage.getItem('user')
 if(saved){ try{G.user=JSON.parse(saved);showApp()}catch(e){} }
-else{ document.getElementById('authWrap').style.display='flex' }
+else{
+  document.getElementById('authWrap').style.display='flex'
+  // 저장된 아이디/비밀번호 자동 채우기
+  const savedId=localStorage.getItem('savedId')
+  const savedPw=localStorage.getItem('savedPw')
+  const saveOn=localStorage.getItem('saveLogin')==='1'
+  if(saveOn && savedId && savedPw){
+    document.getElementById('login-id').value=savedId
+    document.getElementById('login-pw').value=savedPw
+    document.getElementById('save-cbox').classList.add('ck')
+  }
+}
 </script>
 </body>
 </html>`
