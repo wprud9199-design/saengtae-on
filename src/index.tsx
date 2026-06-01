@@ -260,9 +260,9 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="fg"><label class="fl">이름 <span class="req">*</span></label><input class="fi" id="rName" placeholder="이름 입력" required/></div>
           <div class="fg"><label class="fl">장소명 <span class="req">*</span></label><input class="fi" id="rLoc" placeholder="조사 장소명" required/></div>
           <div class="fg">
-            <label class="fl">지역</label>
-            <select class="fs" id="rRegion">
-              <option value="">지역 선택</option>
+            <label class="fl">지역 <span class="req">*</span></label>
+            <select class="fs" id="rRegion" required>
+              <option value="">-- 지역을 선택하세요 --</option>
               ${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면','우도면','추자면'].map(r=>`<option value="${r}">${r}</option>`).join('')}
             </select>
           </div>
@@ -277,7 +277,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
             </div>
             <input type="hidden" id="rStatus" value="양호"/>
           </div>
-          <div class="fg"><label class="fl">특이사항</label><textarea class="ft" id="rNotes" placeholder="특이사항 입력..."></textarea></div>
+          <div class="fg"><label class="fl">특이사항 <span class="req">*</span></label><textarea class="ft" id="rNotes" placeholder="특이사항을 입력해주세요 (필수)" required></textarea></div>
         </div>
 
         <div class="card">
@@ -311,12 +311,12 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 
         <div class="card">
           <div class="card-ttl"><i class="fas fa-clipboard-check"></i> 생태 모니터링 체크리스트</div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>① 식생 훼손 여부</b></div><div class="cl-sub">훼손 및 우려지역 존재 여부</div></div><select class="cl-sel" id="cl-v"><option>양호</option><option>보통</option><option>미흡</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>② 외래종 발생</b></div><div class="cl-sub">외래식물·교란종 확인 여부</div></div><select class="cl-sel" id="cl-i"><option>없음</option><option>있음</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>③ 환경 관리</b></div><div class="cl-sub">불법투기 및 폐기물 발생 여부</div></div><select class="cl-sel" id="cl-e"><option>없음</option><option>있음</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>④ 탐방로 상태</b></div><div class="cl-sub">탐방로 침식·파손 여부</div></div><select class="cl-sel" id="cl-t"><option>양호</option><option>정비 필요</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>⑤ 사진 기록</b></div><div class="cl-sub">동일지점 사진 촬영 여부</div></div><select class="cl-sel" id="cl-p"><option>완료</option><option>미완료</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>⑥ 안내시설</b></div><div class="cl-sub">안내판 및 시설물 상태</div></div><select class="cl-sel" id="cl-g"><option>양호</option><option>보통</option><option>미흡</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>① 식생 훼손 여부</b></div><div class="cl-sub">훼손 및 우려지역 존재 여부</div></div><select class="cl-sel" id="cl-v"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>② 외래종 발생</b></div><div class="cl-sub">외래식물·교란종 확인 여부</div></div><select class="cl-sel" id="cl-i"><option value="">-- 선택 --</option><option>없음</option><option>있음</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>③ 환경 관리</b></div><div class="cl-sub">불법투기 및 폐기물 발생 여부</div></div><select class="cl-sel" id="cl-e"><option value="">-- 선택 --</option><option>없음</option><option>있음</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>④ 탐방로 상태</b></div><div class="cl-sub">탐방로 침식·파손 여부</div></div><select class="cl-sel" id="cl-t"><option value="">-- 선택 --</option><option>양호</option><option>정비 필요</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>⑤ 사진 기록</b></div><div class="cl-sub">동일지점 사진 촬영 여부</div></div><select class="cl-sel" id="cl-p"><option value="">-- 선택 --</option><option>완료</option><option>미완료</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>⑥ 안내시설</b></div><div class="cl-sub">안내판 및 시설물 상태</div></div><select class="cl-sel" id="cl-g"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option></select></div>
         </div>
 
         <button type="submit" class="btn-p" id="subBtn"><i class="fas fa-paper-plane"></i> 기록 제출</button>
@@ -773,12 +773,44 @@ function closeMap(){
 // ══ 폼 제출 ══
 async function submitForm(e){
   e.preventDefault()
+
   // ── 사진 필수 검사 ──
   if(G.photos.length===0){
     toast('📷 사진을 1장 이상 등록해주세요.')
     document.getElementById('pgrid').scrollIntoView({behavior:'smooth',block:'center'})
     return
   }
+
+  // ── 지역 필수 검사 ──
+  const region = document.getElementById('rRegion').value
+  if(!region){
+    toast('📍 지역을 선택해주세요.')
+    document.getElementById('rRegion').focus()
+    document.getElementById('rRegion').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
+  // ── 특이사항 필수 검사 ──
+  const notes = document.getElementById('rNotes').value.trim()
+  if(!notes){
+    toast('📝 특이사항을 입력해주세요.')
+    document.getElementById('rNotes').focus()
+    document.getElementById('rNotes').scrollIntoView({behavior:'smooth',block:'center'})
+    return
+  }
+
+  // ── 체크리스트 전체 선택 검사 ──
+  const clIds = ['cl-v','cl-i','cl-e','cl-t','cl-p','cl-g']
+  const clNames = ['① 식생 훼손 여부','② 외래종 발생','③ 환경 관리','④ 탐방로 상태','⑤ 사진 기록','⑥ 안내시설']
+  for(let i=0; i<clIds.length; i++){
+    if(!document.getElementById(clIds[i]).value){
+      toast(\`✅ 체크리스트 "\${clNames[i]}"을 선택해주세요.\`)
+      document.getElementById(clIds[i]).focus()
+      document.getElementById(clIds[i]).scrollIntoView({behavior:'smooth',block:'center'})
+      return
+    }
+  }
+
   const btn=document.getElementById('subBtn'); btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 저장 중...'
   try{
     const payload={
