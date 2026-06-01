@@ -266,7 +266,11 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
               ${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면','우도면','추자면'].map(r=>`<option value="${r}">${r}</option>`).join('')}
             </select>
           </div>
-          <div class="fg"><label class="fl">종명 <span class="req">*</span></label><input class="fi" id="rSpecies" placeholder="식물/동물 종명" required/></div>
+          <div class="fg">
+            <label class="fl">종명 <span class="req">*</span></label>
+            <input class="fi" id="rSpecies" placeholder="식물/동물 종명 (모를 경우 '모름' 입력)" required/>
+            <div style="font-size:11px;color:#f57f17;margin-top:4px"><i class="fas fa-info-circle"></i> 종명을 모르실 경우 <b>'모름'</b>으로 입력해주세요.</div>
+          </div>
           <div class="fg">
             <label class="fl">상태</label>
             <div class="sbg">
@@ -316,7 +320,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="cl-row"><div><div class="cl-lbl"><b>③ 환경 관리</b></div><div class="cl-sub">불법투기 및 폐기물 발생 여부</div></div><select class="cl-sel" id="cl-e"><option value="">-- 선택 --</option><option>없음</option><option>있음</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>④ 탐방로 상태</b></div><div class="cl-sub">탐방로 침식·파손 여부</div></div><select class="cl-sel" id="cl-t"><option value="">-- 선택 --</option><option>양호</option><option>정비 필요</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>⑤ 사진 기록</b></div><div class="cl-sub">동일지점 사진 촬영 여부</div></div><select class="cl-sel" id="cl-p"><option value="">-- 선택 --</option><option>완료</option><option>미완료</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>⑥ 안내시설</b></div><div class="cl-sub">안내판 및 시설물 상태</div></div><select class="cl-sel" id="cl-g"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>⑥ 안내시설</b></div><div class="cl-sub">안내판 및 시설물 상태</div></div><select class="cl-sel" id="cl-g"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option><option>안내시설 없음</option></select></div>
         </div>
 
         <button type="submit" class="btn-p" id="subBtn"><i class="fas fa-paper-plane"></i> 기록 제출</button>
