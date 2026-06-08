@@ -64,8 +64,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 .fs{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
 
 /* ── 상태버튼 ── */
-.sbg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-.sbtn{padding:7px 4px;border-radius:9px;font-size:11px;font-weight:600;border:2px solid #e0e0e0;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.sbg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.sbtn{padding:7px 2px;border-radius:9px;font-size:10.5px;font-weight:600;border:2px solid #e0e0e0;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;white-space:nowrap}
 .sbtn.ag{background:#e8f5e9;border-color:#4caf50;color:#2e7d32}
 .sbtn.an{background:#fff3e0;border-color:#ff9800;color:#e65100}
 .sbtn.ab{background:#fce4ec;border-color:#f44336;color:#c62828}
