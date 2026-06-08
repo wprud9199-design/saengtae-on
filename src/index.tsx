@@ -111,6 +111,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 .rc-ii{font-size:11px;color:#777}
 .rc-ii i{width:14px;color:#2d9e52}
 .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600}
+.s-관련없음{background:#f3f4f6;color:#6b7280}
 .s-양호{background:#e8f5e9;color:#2e7d32}
 .s-보통{background:#fff3e0;color:#e65100}
 .s-불량{background:#fce4ec;color:#c62828}
@@ -321,12 +322,13 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="fg">
             <label class="fl">상태</label>
             <div class="sbg">
-              <button type="button" class="sbtn ag" id="sb-양호" onclick="selSt('양호')">🟢 양호</button>
+              <button type="button" class="sbtn ag" id="sb-관련없음" onclick="selSt('관련없음')">⚪ 관련없음</button>
+              <button type="button" class="sbtn" id="sb-양호" onclick="selSt('양호')">🟢 양호</button>
               <button type="button" class="sbtn" id="sb-보통" onclick="selSt('보통')">🟡 보통</button>
               <button type="button" class="sbtn" id="sb-불량" onclick="selSt('불량')">🔴 불량</button>
               <button type="button" class="sbtn" id="sb-고사" onclick="selSt('고사')">⬛ 고사</button>
             </div>
-            <input type="hidden" id="rStatus" value="양호"/>
+            <input type="hidden" id="rStatus" value="관련없음"/>
           </div>
           <div class="fg"><label class="fl">특이사항 <span class="req">*</span></label><textarea class="ft" id="rNotes" placeholder="특이사항을 입력해주세요 (필수)" required></textarea></div>
         </div>
@@ -564,6 +566,7 @@ tr:hover td{background:#fafffe}
 .b-rejected{background:#fce4ec;color:#c62828}
 .b-suspended{background:#f3e5f5;color:#7b1fa2}
 .b-admin{background:#e3f2fd;color:#1565c0}
+.s-관련없음{background:#f3f4f6;color:#6b7280}
 .s-양호{background:#e8f5e9;color:#2e7d32}
 .s-보통{background:#fff3e0;color:#e65100}
 .s-불량{background:#fce4ec;color:#c62828}
@@ -758,7 +761,7 @@ tr:hover td{background:#fafffe}
           <div class="card-ttl"><i class="fas fa-database"></i> 모니터링 기록 관리</div>
           <div class="filter-bar">
             <input class="fi-sm" id="rf-kw" placeholder="🔍 종명·장소·이름 검색" oninput="filterRecs()"/>
-            <select class="fi-sm" id="rf-st" onchange="filterRecs()" style="min-width:100px"><option value="">전체 상태</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
+            <select class="fi-sm" id="rf-st" onchange="filterRecs()" style="min-width:100px"><option value="">전체 상태</option><option>관련없음</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
             <select class="fi-sm" id="rf-rg" onchange="filterRecs()" style="min-width:110px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
             <select class="fi-sm" id="rf-rv" onchange="filterRecs()" style="min-width:100px"><option value="">전체 검수</option><option value="검토중">검토중</option><option value="승인">승인</option><option value="반려">반려</option><option value="수정요청">수정요청</option></select>
             <input type="date" class="fi-sm" id="rf-from" onchange="filterRecs()" style="min-width:130px"/>
@@ -804,7 +807,7 @@ tr:hover td{background:#fafffe}
         <div class="card">
           <div class="card-ttl"><i class="fas fa-map-marked-alt"></i> 지도 기반 데이터 시각화</div>
           <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <select class="fi-sm" id="map-st-filter" onchange="renderMap()" style="min-width:110px"><option value="">전체 상태</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
+            <select class="fi-sm" id="map-st-filter" onchange="renderMap()" style="min-width:110px"><option value="">전체 상태</option><option>관련없음</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select>
             <select class="fi-sm" id="map-rg-filter" onchange="renderMap()" style="min-width:120px"><option value="">전체 지역</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select>
             <select class="fi-sm" id="map-rt-filter" onchange="renderMap()" style="min-width:110px"><option value="">전체 유형</option><option value="신규등록">신규등록</option><option value="재점검">재점검</option></select>
             <input type="date" class="fi-sm" id="map-from" onchange="renderMap()" style="min-width:130px"/>
@@ -1061,7 +1064,7 @@ tr:hover td{background:#fafffe}
       <div class="fg"><label class="fl">이름 *</label><input class="fi" id="e-nm"/></div>
       <div class="fg"><label class="fl">장소 *</label><input class="fi" id="e-loc"/></div>
       <div class="fg"><label class="fl">종명 *</label><input class="fi" id="e-sp"/></div>
-      <div class="fg"><label class="fl">상태</label><select class="fs" id="e-st"><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select></div>
+      <div class="fg"><label class="fl">상태</label><select class="fs" id="e-st"><option>관련없음</option><option>양호</option><option>보통</option><option>불량</option><option>고사</option></select></div>
       <div class="fg"><label class="fl">지역</label><select class="fs" id="e-rg"><option value="">선택</option>${['제주시','서귀포시','애월읍','한림읍','조천읍','구좌읍','성산읍','표선면','남원읍','안덕면','대정읍','한경면'].map(r=>`<option>${r}</option>`).join('')}</select></div>
       <div class="fg"><label class="fl">수정자</label><input class="fi" id="e-by" placeholder="수정자 이름"/></div>
       <div class="fg"><label class="fl">위도</label><input class="fi" type="number" id="e-lat" step="0.000001"/></div>
