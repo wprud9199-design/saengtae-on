@@ -140,6 +140,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 .auth-logo .lm .on{color:#a8e6bc}
 .auth-logo .ls{font-size:14px;color:rgba(255,255,255,.85);margin-top:4px}
 .auth-logo .lb{font-size:11px;background:rgba(255,255,255,.2);color:#fff;padding:3px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.3);margin-top:8px;display:inline-block}
+.auth-footer-logos{display:flex;justify-content:center;align-items:center;gap:20px;margin-top:20px;flex-wrap:wrap}
+.auth-footer-logo{height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1);opacity:0.75}
 .auth-box{background:#fff;border-radius:20px;padding:24px 20px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.15)}
 .auth-tabs{display:flex;border-bottom:2px solid #e8f5e9;margin-bottom:18px}
 .auth-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;color:#999;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
@@ -227,8 +229,9 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
       <div id="regMsg" style="margin-top:10px;font-size:12px;text-align:center;display:none"></div>
     </div>
   </div>
-  <div style="text-align:center;margin-top:12px">
-    <span style="font-size:11px;color:rgba(255,255,255,.7)">© 제주녹색환경지원센터</span>
+  <div class="auth-footer-logos">
+    <img src="/static/logo_jgec.png" alt="제주녹색환경지원센터" class="auth-footer-logo">
+    <img src="/static/logo_jpesc.png" alt="제주생태계서비스지원센터" class="auth-footer-logo">
   </div>
 </div>
 
@@ -632,7 +635,11 @@ tr:hover td{background:#fafffe}
     <div class="fg"><label class="fl">비밀번호</label><input class="fi" type="password" id="aPw" value="admin1234" onkeydown="if(event.key==='Enter')aLogin()"/></div>
     <button class="btn-p" style="width:100%;padding:12px;justify-content:center;font-size:14px" onclick="aLogin()"><i class="fas fa-lock"></i> 로그인</button>
     <div id="aLoginMsg" style="margin-top:9px;font-size:12px;text-align:center;color:#e53935;display:none"></div>
-    <div style="text-align:center;margin-top:12px"><a href="/" style="font-size:11px;color:#aaa;text-decoration:none"><i class="fas fa-arrow-left"></i> 앱으로 돌아가기</a></div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:18px;padding-top:14px;border-top:1px solid #f0f0f0">
+      <img src="/static/logo_jgec.png" alt="제주녹색환경지원센터" style="height:28px;width:auto;object-fit:contain;opacity:0.7">
+      <img src="/static/logo_jpesc.png" alt="제주생태계서비스지원센터" style="height:28px;width:auto;object-fit:contain;opacity:0.7">
+    </div>
+    <div style="text-align:center;margin-top:10px"><a href="/" style="font-size:11px;color:#aaa;text-decoration:none"><i class="fas fa-arrow-left"></i> 앱으로 돌아가기</a></div>
   </div>
 </div>
 
