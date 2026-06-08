@@ -170,8 +170,10 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 @keyframes fio{0%{opacity:0;transform:translateX(-50%) translateY(8px)}15%{opacity:1;transform:translateX(-50%)}75%{opacity:1}100%{opacity:0}}
 
 /* ── 푸터 ── */
-.app-footer{background:#f8f8f8;border-top:1px solid #e0e0e0;padding:7px 14px;text-align:center;flex-shrink:0}
-.footer-txt{font-size:10px;color:#bbb}
+.app-footer{background:#f8f9f5;border-top:1px solid #e0e8d8;padding:14px 16px;text-align:center;flex-shrink:0}
+.footer-logos{display:flex;justify-content:center;align-items:center;gap:20px;margin-bottom:8px;flex-wrap:wrap}
+.footer-logo-img{height:36px;width:auto;object-fit:contain;opacity:0.85}
+.footer-txt{font-size:10px;color:#aaa;line-height:1.5}
 </style>
 </head>
 <body>
@@ -427,7 +429,11 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
   </div>
 
   <footer class="app-footer">
-    <div class="footer-txt">© 제주녹색환경지원센터(제주생태계서비스지원센터)</div>
+    <div class="footer-logos">
+      <img src="/static/logo_jgec.png" alt="제주녹색환경지원센터" class="footer-logo-img">
+      <img src="/static/logo_jpesc.jpg" alt="제주생태계서비스지원센터" class="footer-logo-img">
+    </div>
+    <div class="footer-txt">© 제주녹색환경지원센터 · 제주특별자치도 생태계서비스지원센터</div>
   </footer>
 </div>
 
