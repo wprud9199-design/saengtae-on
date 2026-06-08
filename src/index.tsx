@@ -399,7 +399,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="cl-row"><div><div class="cl-lbl"><b>① 식생 훼손 여부</b></div><div class="cl-sub">훼손 및 우려지역 존재 여부</div></div><select class="cl-sel" id="cl-v"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>② 외래종 발생</b></div><div class="cl-sub">외래식물·교란종 확인 여부</div></div><select class="cl-sel" id="cl-i"><option value="">-- 선택 --</option><option>없음</option><option>있음</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>③ 환경 관리</b></div><div class="cl-sub">불법투기 및 폐기물 발생 여부</div></div><select class="cl-sel" id="cl-e"><option value="">-- 선택 --</option><option>없음</option><option>있음</option></select></div>
-          <div class="cl-row"><div><div class="cl-lbl"><b>④ 탐방로 상태</b></div><div class="cl-sub">탐방로 침식·파손 여부</div></div><select class="cl-sel" id="cl-t"><option value="">-- 선택 --</option><option>양호</option><option>정비 필요</option></select></div>
+          <div class="cl-row"><div><div class="cl-lbl"><b>④ 탐방로 상태</b></div><div class="cl-sub">탐방로 침식·파손 여부</div></div><select class="cl-sel" id="cl-t"><option value="">-- 선택 --</option><option>양호</option><option>정비 필요</option><option>탐방로 없음</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>⑤ 사진 기록</b></div><div class="cl-sub">동일지점 사진 촬영 여부</div></div><select class="cl-sel" id="cl-p"><option value="">-- 선택 --</option><option>완료</option><option>미완료</option></select></div>
           <div class="cl-row"><div><div class="cl-lbl"><b>⑥ 안내시설</b></div><div class="cl-sub">안내판 및 시설물 상태</div></div><select class="cl-sel" id="cl-g"><option value="">-- 선택 --</option><option>양호</option><option>보통</option><option>미흡</option><option>안내시설 없음</option></select></div>
         </div>
@@ -1097,7 +1097,7 @@ tr:hover td{background:#fafffe}
         <div class="fg"><label class="fl">① 식생 훼손</label><select class="fs" id="e-cl-v"><option>양호</option><option>보통</option><option>미흡</option></select></div>
         <div class="fg"><label class="fl">② 외래종 발생</label><select class="fs" id="e-cl-i"><option>없음</option><option>있음</option></select></div>
         <div class="fg"><label class="fl">③ 환경 관리</label><select class="fs" id="e-cl-e"><option>없음</option><option>있음</option></select></div>
-        <div class="fg"><label class="fl">④ 탐방로 상태</label><select class="fs" id="e-cl-t"><option>양호</option><option>정비 필요</option></select></div>
+        <div class="fg"><label class="fl">④ 탐방로 상태</label><select class="fs" id="e-cl-t"><option>양호</option><option>정비 필요</option><option>탐방로 없음</option></select></div>
         <div class="fg"><label class="fl">⑤ 사진 기록</label><select class="fs" id="e-cl-p"><option>완료</option><option>미완료</option></select></div>
         <div class="fg"><label class="fl">⑥ 안내시설</label><select class="fs" id="e-cl-g"><option>양호</option><option>보통</option><option>미흡</option></select></div>
       </div>
