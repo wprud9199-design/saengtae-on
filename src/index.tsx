@@ -316,7 +316,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
           <div class="fg">
             <label class="fl">종명 <span class="req">*</span></label>
             <input class="fi" id="rSpecies" placeholder="식물/동물 종명 (모를 경우 '모름' 입력)" required/>
-            <div style="font-size:11px;color:#f57f17;margin-top:4px"><i class="fas fa-info-circle"></i> 종명을 모르실 경우 <b>'모름'</b>으로 입력해주세요.</div>
+            <div style="font-size:11px;color:#f57f17;margin-top:4px"><i class="fas fa-info-circle"></i> 종명을 모르실 경우 <b>'모름'</b>으로 입력하거나, 종과 관련없을 경우 <b>'없음'</b>이라고 작성해주세요.</div>
           </div>
           <div class="fg">
             <label class="fl">상태</label>
