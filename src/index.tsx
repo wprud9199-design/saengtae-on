@@ -66,6 +66,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0
 /* ── 상태버튼 ── */
 .sbg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
 .sbtn{padding:7px 2px;border-radius:9px;font-size:10.5px;font-weight:600;border:2px solid #e0e0e0;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;white-space:nowrap}
+.sbtn.an0{background:#f3f4f6;border-color:#9ca3af;color:#4b5563}
 .sbtn.ag{background:#e8f5e9;border-color:#4caf50;color:#2e7d32}
 .sbtn.an{background:#fff3e0;border-color:#ff9800;color:#e65100}
 .sbtn.ab{background:#fce4ec;border-color:#f44336;color:#c62828}

@@ -112,7 +112,7 @@ function showApp(){
   document.getElementById('rName').value=G.user.full_name||''
   loadMyPage()
   renderPhotoGrid()
-  selSt('양호')
+  selSt('관련없음')
 }
 
 // ══ 사용자 메뉴 ══
@@ -132,10 +132,11 @@ function sw(t){
 }
 
 // ══ 상태 ══
-const stMap={'양호':'ag','보통':'an','불량':'ab','고사':'ad'}
+const stMap={'관련없음':'an0','양호':'ag','보통':'an','불량':'ab','고사':'ad'}
 function selSt(s){
   document.querySelectorAll('.sbtn').forEach(b=>b.className='sbtn')
-  document.getElementById('sb-'+s).classList.add(stMap[s])
+  const cls=stMap[s]
+  if(cls) document.getElementById('sb-'+s).classList.add(cls)
   document.getElementById('rStatus').value=s
 }
 
@@ -529,7 +530,7 @@ function resetForm(){
   document.getElementById('mForm').reset()
   G.photos=[]; G.lat=null; G.lng=null; G.checks={rm:false,nr:false,sc:false}
   G.regType='신규등록'; G.riChecks=Array(9).fill(false)
-  renderPhotoGrid(); selSt('양호')
+  renderPhotoGrid(); selSt('관련없음')
   document.getElementById('locDisp').classList.remove('vis')
   document.querySelectorAll('.cbox').forEach(b=>b.classList.remove('ck'))
   document.getElementById('rName').value=G.user?.full_name||''
